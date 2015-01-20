@@ -1,0 +1,1 @@
+set kernel memcheck on
