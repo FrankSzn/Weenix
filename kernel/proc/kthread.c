@@ -28,11 +28,9 @@ static list_t kthread_reapd_deadlist; /* Threads to be cleaned */
 static void *kthread_reapd_run(int arg1, void *arg2);
 #endif
 
-void
-kthread_init()
-{
-        kthread_allocator = slab_allocator_create("kthread", sizeof(kthread_t));
-        KASSERT(NULL != kthread_allocator);
+void kthread_init() {
+  kthread_allocator = slab_allocator_create("kthread", sizeof(kthread_t));
+  KASSERT(NULL != kthread_allocator);
 }
 
 /**
@@ -41,15 +39,13 @@ kthread_init()
  * @return a newly allocated stack, or NULL if there is not enough
  * memory available
  */
-static char *
-alloc_stack(void)
-{
-        /* extra page for "magic" data */
-        char *kstack;
-        int npages = 1 + (DEFAULT_STACK_SIZE >> PAGE_SHIFT);
-        kstack = (char *)page_alloc_n(npages);
+static char *alloc_stack(void) {
+  /* extra page for "magic" data */
+  char *kstack;
+  int npages = 1 + (DEFAULT_STACK_SIZE >> PAGE_SHIFT);
+  kstack = (char *)page_alloc_n(npages);
 
-        return kstack;
+  return kstack;
 }
 
 /**
@@ -57,10 +53,8 @@ alloc_stack(void)
  *
  * @param stack the stack to free
  */
-static void
-free_stack(char *stack)
-{
-        page_free_n(stack, 1 + (DEFAULT_STACK_SIZE >> PAGE_SHIFT));
+static void free_stack(char *stack) {
+  page_free_n(stack, 1 + (DEFAULT_STACK_SIZE >> PAGE_SHIFT));
 }
 
 /*
@@ -71,22 +65,32 @@ free_stack(char *stack)
  * context_setup function. The context should have the same pagetable
  * pointer as the process.
  */
-kthread_t *
-kthread_create(struct proc *p, kthread_func_t func, long arg1, void *arg2)
-{
-        NOT_YET_IMPLEMENTED("PROCS: kthread_create");
-        return NULL;
+kthread_t *kthread_create(struct proc *p, kthread_func_t func, long arg1,
+                          void *arg2) {
+  kthread_t *new_kt = slab_obj_alloc(kthread_allocator);
+  new_kt->kt_kstack = alloc_stack();
+  KASSERT(new_kt->kt_kstack);
+  context_setup(&new_kt->kt_ctx, func, arg1, arg2, new_kt->kt_kstack,
+                DEFAULT_STACK_SIZE, p->p_pagedir);
+  new_kt->kt_retval = 0;
+  new_kt->kt_errno = 0;
+  new_kt->kt_proc = p;
+  new_kt->kt_cancelled = 0;
+  new_kt->kt_wchan = NULL;
+  new_kt->kt_state = KT_NO_STATE;
+  list_link_init(&new_kt->kt_qlink);
+  list_link_init(&new_kt->kt_plink);
+  return new_kt;
 }
 
-void
-kthread_destroy(kthread_t *t)
-{
-        KASSERT(t && t->kt_kstack);
-        free_stack(t->kt_kstack);
-        if (list_link_is_linked(&t->kt_plink))
-                list_remove(&t->kt_plink);
-
-        slab_obj_free(kthread_allocator, t);
+void kthread_destroy(kthread_t *t) {
+  KASSERT(t && t->kt_kstack);
+  KASSERT(!list_link_is_linked(&t->kt_qlink));
+  KASSERT(t->kt_state == KT_EXITED);
+  free_stack(t->kt_kstack);
+  if (list_link_is_linked(&t->kt_plink))
+    list_remove(&t->kt_plink);
+  slab_obj_free(kthread_allocator, t);
 }
 
 /*
@@ -100,10 +104,17 @@ kthread_destroy(kthread_t *t)
  *
  * If the thread's sleep is not cancellable, we do nothing else here.
  */
-void
-kthread_cancel(kthread_t *kthr, void *retval)
-{
-        NOT_YET_IMPLEMENTED("PROCS: kthread_cancel");
+void kthread_cancel(kthread_t *kthr, void *retval) {
+  if (kthr == curthr)
+    kthread_exit(retval);
+  else {
+    if (kthr->kt_state == KT_SLEEP || kthr->kt_state == KT_SLEEP_CANCELLABLE) {
+      kthr->kt_retval = retval;
+      sched_cancel(kthr);
+    } else {
+      panic("kthread_cancel called with invalid state\n");
+    }
+  }
 }
 
 /*
@@ -118,10 +129,9 @@ kthread_cancel(kthread_t *kthr, void *retval)
  * exiting does not necessarily mean that the process needs to be
  * cleaned up.
  */
-void
-kthread_exit(void *retval)
-{
-        NOT_YET_IMPLEMENTED("PROCS: kthread_exit");
+void kthread_exit(void *retval) {
+  curthr->kt_retval = retval;
+  proc_thread_exited(retval);
 }
 
 /*
@@ -131,11 +141,9 @@ kthread_exit(void *retval)
  *
  * You do not need to worry about this until VM.
  */
-kthread_t *
-kthread_clone(kthread_t *thr)
-{
-        NOT_YET_IMPLEMENTED("VM: kthread_clone");
-        return NULL;
+kthread_t *kthread_clone(kthread_t *thr) {
+  NOT_YET_IMPLEMENTED("VM: kthread_clone");
+  return NULL;
 }
 
 /*
@@ -144,41 +152,31 @@ kthread_clone(kthread_t *thr)
  * unless your weenix is perfect.
  */
 #ifdef __MTP__
-int
-kthread_detach(kthread_t *kthr)
-{
-        NOT_YET_IMPLEMENTED("MTP: kthread_detach");
-        return 0;
+int kthread_detach(kthread_t *kthr) {
+  NOT_YET_IMPLEMENTED("MTP: kthread_detach");
+  return 0;
 }
 
-int
-kthread_join(kthread_t *kthr, void **retval)
-{
-        NOT_YET_IMPLEMENTED("MTP: kthread_join");
-        return 0;
+int kthread_join(kthread_t *kthr, void **retval) {
+  NOT_YET_IMPLEMENTED("MTP: kthread_join");
+  return 0;
 }
 
 /* ------------------------------------------------------------------ */
 /* -------------------------- REAPER DAEMON ------------------------- */
 /* ------------------------------------------------------------------ */
-static __attribute__((unused)) void
-kthread_reapd_init()
-{
-        NOT_YET_IMPLEMENTED("MTP: kthread_reapd_init");
+static __attribute__((unused)) void kthread_reapd_init() {
+  NOT_YET_IMPLEMENTED("MTP: kthread_reapd_init");
 }
 init_func(kthread_reapd_init);
 init_depends(sched_init);
 
-void
-kthread_reapd_shutdown()
-{
-        NOT_YET_IMPLEMENTED("MTP: kthread_reapd_shutdown");
+void kthread_reapd_shutdown() {
+  NOT_YET_IMPLEMENTED("MTP: kthread_reapd_shutdown");
 }
 
-static void *
-kthread_reapd_run(int arg1, void *arg2)
-{
-        NOT_YET_IMPLEMENTED("MTP: kthread_reapd_run");
-        return (void *) 0;
+static void *kthread_reapd_run(int arg1, void *arg2) {
+  NOT_YET_IMPLEMENTED("MTP: kthread_reapd_run");
+  return (void *)0;
 }
 #endif

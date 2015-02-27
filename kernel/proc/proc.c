@@ -32,17 +32,16 @@ static slab_allocator_t *proc_allocator = NULL;
 static list_t _proc_list;
 static proc_t *proc_initproc = NULL; /* Pointer to the init process (PID 1) */
 
-void
-proc_init()
-{
-        list_init(&_proc_list);
-        proc_allocator = slab_allocator_create("proc", sizeof(proc_t));
-        KASSERT(proc_allocator != NULL);
+void proc_init() {
+  list_init(&_proc_list);
+  proc_allocator = slab_allocator_create("proc", sizeof(proc_t));
+  KASSERT(proc_allocator != NULL);
 }
 
 static pid_t next_pid = 0;
 
 /**
+ * schedule_cancelable_sleep(p_wait);
  * Returns the next available PID.
  *
  * Note: Where n is the number of running processes, this algorithm is
@@ -50,25 +49,24 @@ static pid_t next_pid = 0;
  *
  * @return the next available PID
  */
-static int
-_proc_getid()
-{
-        proc_t *p;
-        pid_t pid = next_pid;
-        while (1) {
-failed:
-                list_iterate_begin(&_proc_list, p, proc_t, p_list_link) {
-                        if (p->p_pid == pid) {
-                                if ((pid = (pid + 1) % PROC_MAX_COUNT) == next_pid) {
-                                        return -1;
-                                } else {
-                                        goto failed;
-                                }
-                        }
-                } list_iterate_end();
-                next_pid = (pid + 1) % PROC_MAX_COUNT;
-                return pid;
+static int _proc_getid() {
+  proc_t *p;
+  pid_t pid = next_pid;
+  while (1) {
+  failed:
+    list_iterate_begin(&_proc_list, p, proc_t, p_list_link) {
+      if (p->p_pid == pid) {
+        if ((pid = (pid + 1) % PROC_MAX_COUNT) == next_pid) {
+          return -1;
+        } else {
+          goto failed;
         }
+      }
+    }
+    list_iterate_end();
+    next_pid = (pid + 1) % PROC_MAX_COUNT;
+    return pid;
+  }
 }
 
 /*
@@ -79,11 +77,41 @@ failed:
  * process. You will need to be able to reference the init process
  * when reparenting processes to the init process.
  */
-proc_t *
-proc_create(char *name)
-{
-        NOT_YET_IMPLEMENTED("PROCS: proc_create");
-        return NULL;
+proc_t *proc_create(char *name) {
+  // Allocate new proc
+  proc_t *new_proc = slab_obj_alloc(proc_allocator);
+  // Set PID
+  new_proc->p_pid = _proc_getid();
+  // Set name
+  strncpy(new_proc->p_comm, name, PROC_NAME_LEN);
+  // Initialize thread and children lists
+  list_init(&new_proc->p_threads);
+  list_init(&new_proc->p_children);
+  list_link_init(&new_proc->p_list_link);
+  list_link_init(&new_proc->p_child_link);
+
+  new_proc->p_pproc = curproc;
+  new_proc->p_status = 0;
+  new_proc->p_state = PROC_RUNNING;
+  sched_queue_init(&new_proc->p_wait);
+
+  // Handle init case
+  if (new_proc->p_pid == PID_INIT)
+    proc_initproc = new_proc;
+
+  // Add to tail of process list
+  list_insert_tail(&_proc_list, &new_proc->p_list_link);
+  // Add to parent's child list
+  if (curproc)
+    list_insert_tail(&curproc->p_children, &new_proc->p_child_link);
+
+  new_proc->p_pagedir = pt_create_pagedir();
+
+  // Fields unset:
+  // /* VFS-related: */
+  // /* VM */
+
+  return new_proc;
 }
 
 /**
@@ -110,10 +138,31 @@ proc_create(char *name)
  *
  * @param status the status to exit the process with
  */
-void
-proc_cleanup(int status)
-{
-        NOT_YET_IMPLEMENTED("PROCS: proc_cleanup");
+void proc_cleanup(int status) {
+  // Set exit status
+  curproc->p_status = status;
+  curproc->p_state = PROC_DEAD;
+
+  pt_destroy_pagedir(curproc->p_pagedir);
+
+  // Handle init case
+  if (curproc->p_pid == PID_INIT)
+    KASSERT(list_empty(&curproc->p_children));
+  else {
+    // Add process's children to init's children
+    proc_t *iterator;
+    list_iterate_begin(&curproc->p_children, iterator, proc_t, p_child_link) {
+      list_insert_tail(&proc_initproc->p_children, &iterator->p_child_link);
+      list_remove(&iterator->p_child_link);
+    }
+    list_iterate_end();
+  }
+
+  // Wake parent
+  sched_broadcast_on(&curproc->p_wait);
+
+  // TODO: close files
+  // TODO: clean up VM mappings
 }
 
 /*
@@ -124,10 +173,17 @@ proc_cleanup(int status)
  *
  * In Weenix, this is only called from proc_kill_all.
  */
-void
-proc_kill(proc_t *p, int status)
-{
-        NOT_YET_IMPLEMENTED("PROCS: proc_kill");
+void proc_kill(proc_t *p, int status) {
+  // cancel all threads
+  if (curproc == p) {
+    do_exit(status);
+  } else {
+  kthread_t *iterator;
+  list_iterate_begin(&p->p_threads, iterator, kthread_t, kt_plink) {
+    kthread_cancel(iterator, &status);
+  }
+  list_iterate_end();
+  }
 }
 
 /*
@@ -136,29 +192,43 @@ proc_kill(proc_t *p, int status)
  *
  * In Weenix, this is only called by sys_halt.
  */
-void
-proc_kill_all()
-{
-        NOT_YET_IMPLEMENTED("PROCS: proc_kill_all");
+void proc_kill_all() {
+  list_link_t *link;
+  list_t *idle_children = &proc_lookup(PID_IDLE)->p_children;
+  for (link = _proc_list.l_next; link != &_proc_list; link = link->l_next) {
+    proc_t *proc = list_item(link, proc_t, p_list_link);
+    // Skip current process
+    if (proc->p_pid == curproc->p_pid)
+      continue;
+    int pid = proc->p_pid;
+    int is_idle_child = 0;
+    // Ensure pid doesn't match an idle child pid
+    for (link = idle_children->l_next; link != idle_children;
+         link = link->l_next) {
+      proc_t *idle_child_proc = list_item(link, proc_t, p_child_link);
+      if (idle_child_proc->p_pid == pid) {
+        is_idle_child = 1;
+        break;
+      }
+    }
+    if (!is_idle_child) {
+      proc_kill(proc, 0);
+    }
+  }
 }
 
-proc_t *
-proc_lookup(int pid)
-{
-        proc_t *p;
-        list_iterate_begin(&_proc_list, p, proc_t, p_list_link) {
-                if (p->p_pid == pid) {
-                        return p;
-                }
-        } list_iterate_end();
-        return NULL;
+proc_t *proc_lookup(int pid) {
+  proc_t *p;
+  list_iterate_begin(&_proc_list, p, proc_t, p_list_link) {
+    if (p->p_pid == pid) {
+      return p;
+    }
+  }
+  list_iterate_end();
+  return NULL;
 }
 
-list_t *
-proc_list()
-{
-        return &_proc_list;
-}
+list_t *proc_list() { return &_proc_list; }
 
 /*
  * This function is only called from kthread_exit.
@@ -168,10 +238,10 @@ proc_list()
  * run. If you are implementing MTP, a single thread exiting does not
  * necessarily mean that the process should be exited.
  */
-void
-proc_thread_exited(void *retval)
-{
-        NOT_YET_IMPLEMENTED("PROCS: proc_thread_exited");
+void proc_thread_exited(void *retval) {
+  kthread_destroy(curthr);
+  proc_cleanup((int)retval);
+  sched_switch();
 }
 
 /* If pid is -1 dispose of one of the exited children of the current
@@ -189,11 +259,54 @@ proc_thread_exited(void *retval)
  * Pids other than -1 and positive numbers are not supported.
  * Options other than 0 are not supported.
  */
-pid_t
-do_waitpid(pid_t pid, int options, int *status)
-{
-        NOT_YET_IMPLEMENTED("PROCS: do_waitpid");
-        return 0;
+pid_t do_waitpid(pid_t pid, int options, int *status) {
+  KASSERT(!options);
+  // Error if no children
+  if (list_empty(&curproc->p_children))
+    return -ECHILD;
+  if (pid == -1) {
+    while (1) {
+      // Iterate through children and reap dead ones
+      proc_t *iterator;
+      list_iterate_begin(&curproc->p_children, iterator, proc_t, p_child_link) {
+        if (iterator->p_state == PROC_DEAD) {
+          if (status)
+            *status = iterator->p_status;
+          list_remove(&iterator->p_child_link);
+          // TODO: proc destroy
+          if (status)
+            iterator->p_status = *status;
+          pid_t pid = iterator->p_pid;
+          slab_obj_free(proc_allocator, iterator);
+          return pid;
+        }
+      }
+      list_iterate_end();
+      sched_cancellable_sleep_on(&curproc->p_wait); // TODO: what kind of sleep?
+    }
+  } else if (pid > 0) {
+    // Iterate through children and reap one with pid
+    proc_t *iterator;
+    list_iterate_begin(&curproc->p_children, iterator, proc_t, p_child_link) {
+      if (iterator->p_pid == pid) {
+        while (1) {
+          if (iterator->p_state == PROC_DEAD) {
+            if (status)
+              *status = iterator->p_status;
+            list_remove(&iterator->p_child_link);
+            slab_obj_free(proc_allocator, iterator);
+            return pid;
+          }
+          sched_cancellable_sleep_on(&curproc->p_wait);
+        }
+      }
+    }
+    list_iterate_end();
+    return -ECHILD; // Child not found
+  } else {
+    KASSERT(0);
+    return 0;
+  }
 }
 
 /*
@@ -202,110 +315,115 @@ do_waitpid(pid_t pid, int options, int *status)
  *
  * @param status the exit status of the process
  */
-void
-do_exit(int status)
-{
-        NOT_YET_IMPLEMENTED("PROCS: do_exit");
+void do_exit(int status) {
+  kthread_t *iterator;
+  list_iterate_begin(&curproc->p_threads, iterator, kthread_t, kt_plink) {
+    kthread_cancel(iterator, (void *) status);
+  }
+  list_iterate_end();
+#ifdef __MTP__
+  list_iterate_begin(&curproc->p_threads, iterator, kthread_t, kt_plink) {
+    kthread_join(iterator, (void *) status);
+  }
+  list_iterate_end();
+#endif
+  kthread_exit(&status);
 }
 
-size_t
-proc_info(const void *arg, char *buf, size_t osize)
-{
-        const proc_t *p = (proc_t *) arg;
-        size_t size = osize;
-        proc_t *child;
+size_t proc_info(const void *arg, char *buf, size_t osize) {
+  const proc_t *p = (proc_t *)arg;
+  size_t size = osize;
+  proc_t *child;
 
-        KASSERT(NULL != p);
-        KASSERT(NULL != buf);
+  KASSERT(NULL != p);
+  KASSERT(NULL != buf);
 
-        iprintf(&buf, &size, "pid:          %i\n", p->p_pid);
-        iprintf(&buf, &size, "name:         %s\n", p->p_comm);
-        if (NULL != p->p_pproc) {
-                iprintf(&buf, &size, "parent:       %i (%s)\n",
-                        p->p_pproc->p_pid, p->p_pproc->p_comm);
-        } else {
-                iprintf(&buf, &size, "parent:       -\n");
-        }
+  iprintf(&buf, &size, "pid:          %i\n", p->p_pid);
+  iprintf(&buf, &size, "name:         %s\n", p->p_comm);
+  if (NULL != p->p_pproc) {
+    iprintf(&buf, &size, "parent:       %i (%s)\n", p->p_pproc->p_pid,
+            p->p_pproc->p_comm);
+  } else {
+    iprintf(&buf, &size, "parent:       -\n");
+  }
 
 #ifdef __MTP__
-        int count = 0;
-        kthread_t *kthr;
-        list_iterate_begin(&p->p_threads, kthr, kthread_t, kt_plink) {
-                ++count;
-        } list_iterate_end();
-        iprintf(&buf, &size, "thread count: %i\n", count);
+  int count = 0;
+  kthread_t *kthr;
+  list_iterate_begin(&p->p_threads, kthr, kthread_t, kt_plink) { ++count; }
+  list_iterate_end();
+  iprintf(&buf, &size, "thread count: %i\n", count);
 #endif
 
-        if (list_empty(&p->p_children)) {
-                iprintf(&buf, &size, "children:     -\n");
-        } else {
-                iprintf(&buf, &size, "children:\n");
-        }
-        list_iterate_begin(&p->p_children, child, proc_t, p_child_link) {
-                iprintf(&buf, &size, "     %i (%s)\n", child->p_pid, child->p_comm);
-        } list_iterate_end();
+  if (list_empty(&p->p_children)) {
+    iprintf(&buf, &size, "children:     -\n");
+  } else {
+    iprintf(&buf, &size, "children:\n");
+  }
+  list_iterate_begin(&p->p_children, child, proc_t, p_child_link) {
+    iprintf(&buf, &size, "     %i (%s)\n", child->p_pid, child->p_comm);
+  }
+  list_iterate_end();
 
-        iprintf(&buf, &size, "status:       %i\n", p->p_status);
-        iprintf(&buf, &size, "state:        %i\n", p->p_state);
+  iprintf(&buf, &size, "status:       %i\n", p->p_status);
+  iprintf(&buf, &size, "state:        %i\n", p->p_state);
 
 #ifdef __VFS__
 #ifdef __GETCWD__
-        if (NULL != p->p_cwd) {
-                char cwd[256];
-                lookup_dirpath(p->p_cwd, cwd, sizeof(cwd));
-                iprintf(&buf, &size, "cwd:          %-s\n", cwd);
-        } else {
-                iprintf(&buf, &size, "cwd:          -\n");
-        }
+  if (NULL != p->p_cwd) {
+    char cwd[256];
+    lookup_dirpath(p->p_cwd, cwd, sizeof(cwd));
+    iprintf(&buf, &size, "cwd:          %-s\n", cwd);
+  } else {
+    iprintf(&buf, &size, "cwd:          -\n");
+  }
 #endif /* __GETCWD__ */
 #endif
 
 #ifdef __VM__
-        iprintf(&buf, &size, "start brk:    0x%p\n", p->p_start_brk);
-        iprintf(&buf, &size, "brk:          0x%p\n", p->p_brk);
+  iprintf(&buf, &size, "start brk:    0x%p\n", p->p_start_brk);
+  iprintf(&buf, &size, "brk:          0x%p\n", p->p_brk);
 #endif
 
-        return size;
+  return size;
 }
 
-size_t
-proc_list_info(const void *arg, char *buf, size_t osize)
-{
-        size_t size = osize;
-        proc_t *p;
+size_t proc_list_info(const void *arg, char *buf, size_t osize) {
+  size_t size = osize;
+  proc_t *p;
 
-        KASSERT(NULL == arg);
-        KASSERT(NULL != buf);
+  KASSERT(NULL == arg);
+  KASSERT(NULL != buf);
 
 #if defined(__VFS__) && defined(__GETCWD__)
-        iprintf(&buf, &size, "%5s %-13s %-18s %-s\n", "PID", "NAME", "PARENT", "CWD");
+  iprintf(&buf, &size, "%5s %-13s %-18s %-s\n", "PID", "NAME", "PARENT", "CWD");
 #else
-        iprintf(&buf, &size, "%5s %-13s %-s\n", "PID", "NAME", "PARENT");
+  iprintf(&buf, &size, "%5s %-13s %-s\n", "PID", "NAME", "PARENT");
 #endif
 
-        list_iterate_begin(&_proc_list, p, proc_t, p_list_link) {
-                char parent[64];
-                if (NULL != p->p_pproc) {
-                        snprintf(parent, sizeof(parent),
-                                 "%3i (%s)", p->p_pproc->p_pid, p->p_pproc->p_comm);
-                } else {
-                        snprintf(parent, sizeof(parent), "  -");
-                }
+  list_iterate_begin(&_proc_list, p, proc_t, p_list_link) {
+    char parent[64];
+    if (NULL != p->p_pproc) {
+      snprintf(parent, sizeof(parent), "%3i (%s)", p->p_pproc->p_pid,
+               p->p_pproc->p_comm);
+    } else {
+      snprintf(parent, sizeof(parent), "  -");
+    }
 
 #if defined(__VFS__) && defined(__GETCWD__)
-                if (NULL != p->p_cwd) {
-                        char cwd[256];
-                        lookup_dirpath(p->p_cwd, cwd, sizeof(cwd));
-                        iprintf(&buf, &size, " %3i  %-13s %-18s %-s\n",
-                                p->p_pid, p->p_comm, parent, cwd);
-                } else {
-                        iprintf(&buf, &size, " %3i  %-13s %-18s -\n",
-                                p->p_pid, p->p_comm, parent);
-                }
+    if (NULL != p->p_cwd) {
+      char cwd[256];
+      lookup_dirpath(p->p_cwd, cwd, sizeof(cwd));
+      iprintf(&buf, &size, " %3i  %-13s %-18s %-s\n", p->p_pid, p->p_comm,
+              parent, cwd);
+    } else {
+      iprintf(&buf, &size, " %3i  %-13s %-18s -\n", p->p_pid, p->p_comm,
+              parent);
+    }
 #else
-                iprintf(&buf, &size, " %3i  %-13s %-s\n",
-                        p->p_pid, p->p_comm, parent);
+    iprintf(&buf, &size, " %3i  %-13s %-s\n", p->p_pid, p->p_comm, parent);
 #endif
-        } list_iterate_end();
-        return size;
+  }
+  list_iterate_end();
+  return size;
 }

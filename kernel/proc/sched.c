@@ -11,14 +11,10 @@
 
 static ktqueue_t kt_runq;
 
-static __attribute__((unused)) void
-sched_init(void)
-{
-        sched_queue_init(&kt_runq);
+void sched_init(void) {
+  sched_queue_init(&kt_runq);
 }
 init_func(sched_init);
-
-
 
 /*** PRIVATE KTQUEUE MANIPULATION FUNCTIONS ***/
 /**
@@ -27,13 +23,14 @@ init_func(sched_init);
  * @param q the queue to enqueue the thread onto
  * @param thr the thread to enqueue onto the queue
  */
-static void
-ktqueue_enqueue(ktqueue_t *q, kthread_t *thr)
-{
-        KASSERT(!thr->kt_wchan);
-        list_insert_head(&q->tq_list, &thr->kt_qlink);
-        thr->kt_wchan = q;
-        q->tq_size++;
+static void ktqueue_enqueue(ktqueue_t *q, kthread_t *thr) {
+  KASSERT(q);
+  KASSERT(!thr->kt_wchan);
+  KASSERT(&q->tq_list);
+  KASSERT(&thr->kt_qlink);
+  list_insert_head(&q->tq_list, &thr->kt_qlink);
+  thr->kt_wchan = q;
+  q->tq_size++;
 }
 
 /**
@@ -42,23 +39,21 @@ ktqueue_enqueue(ktqueue_t *q, kthread_t *thr)
  * @param q the queue to dequeue a thread from
  * @return the thread dequeued from the queue
  */
-static kthread_t *
-ktqueue_dequeue(ktqueue_t *q)
-{
-        kthread_t *thr;
-        list_link_t *link;
+static kthread_t *ktqueue_dequeue(ktqueue_t *q) {
+  kthread_t *thr;
+  list_link_t *link;
 
-        if (list_empty(&q->tq_list))
-                return NULL;
+  if (list_empty(&q->tq_list))
+    return NULL;
 
-        link = q->tq_list.l_prev;
-        thr = list_item(link, kthread_t, kt_qlink);
-        list_remove(link);
-        thr->kt_wchan = NULL;
+  link = q->tq_list.l_prev;
+  thr = list_item(link, kthread_t, kt_qlink);
+  list_remove(link);
+  thr->kt_wchan = NULL;
 
-        q->tq_size--;
+  q->tq_size--;
 
-        return thr;
+  return thr;
 }
 
 /**
@@ -67,28 +62,20 @@ ktqueue_dequeue(ktqueue_t *q)
  * @param q the queue to remove the thread from
  * @param thr the thread to remove from the queue
  */
-static void
-ktqueue_remove(ktqueue_t *q, kthread_t *thr)
-{
-        KASSERT(thr->kt_qlink.l_next && thr->kt_qlink.l_prev);
-        list_remove(&thr->kt_qlink);
-        thr->kt_wchan = NULL;
-        q->tq_size--;
+static void ktqueue_remove(ktqueue_t *q, kthread_t *thr) {
+  KASSERT(thr->kt_qlink.l_next && thr->kt_qlink.l_prev);
+  list_remove(&thr->kt_qlink);
+  thr->kt_wchan = NULL;
+  q->tq_size--;
 }
 
 /*** PUBLIC KTQUEUE MANIPULATION FUNCTIONS ***/
-void
-sched_queue_init(ktqueue_t *q)
-{
-        list_init(&q->tq_list);
-        q->tq_size = 0;
+void sched_queue_init(ktqueue_t *q) {
+  list_init(&q->tq_list);
+  q->tq_size = 0;
 }
 
-int
-sched_queue_empty(ktqueue_t *q)
-{
-        return list_empty(&q->tq_list);
-}
+int sched_queue_empty(ktqueue_t *q) { return list_empty(&q->tq_list); }
 
 /*
  * Updates the thread's state and enqueues it on the given
@@ -97,12 +84,14 @@ sched_queue_empty(ktqueue_t *q)
  *
  * Use the private queue manipulation functions above.
  */
-void
-sched_sleep_on(ktqueue_t *q)
-{
-        NOT_YET_IMPLEMENTED("PROCS: sched_sleep_on");
+void sched_sleep_on(ktqueue_t *q) {
+  KASSERT(curthr->kt_state == KT_RUN);
+  curthr->kt_state = KT_SLEEP;
+  ktqueue_enqueue(q, curthr);
+  sched_switch();
+  if (curthr->kt_cancelled)
+    kthread_exit(NULL);
 }
-
 
 /*
  * Similar to sleep on, but the sleep can be cancelled.
@@ -111,24 +100,30 @@ sched_sleep_on(ktqueue_t *q)
  *
  * Use the private queue manipulation functions above.
  */
-int
-sched_cancellable_sleep_on(ktqueue_t *q)
-{
-        NOT_YET_IMPLEMENTED("PROCS: sched_cancellable_sleep_on");
-        return 0;
+int sched_cancellable_sleep_on(ktqueue_t *q) {
+  KASSERT(curthr->kt_state == KT_RUN);
+  curthr->kt_state = KT_SLEEP_CANCELLABLE;
+  ktqueue_enqueue(q, curthr);
+  sched_switch();
+  if (curthr->kt_cancelled)
+    return -EINTR;
+  else
+    return 0;
 }
 
-kthread_t *
-sched_wakeup_on(ktqueue_t *q)
-{
-        NOT_YET_IMPLEMENTED("PROCS: sched_wakeup_on");
-        return NULL;
+kthread_t *sched_wakeup_on(ktqueue_t *q) {
+  if (sched_queue_empty(q))
+    return NULL;
+  kthread_t *kt = ktqueue_dequeue(q);
+  sched_make_runnable(kt);
+  return kt; // TODO: fix return value
 }
 
-void
-sched_broadcast_on(ktqueue_t *q)
-{
-        NOT_YET_IMPLEMENTED("PROCS: sched_broadcast_on");
+void sched_broadcast_on(ktqueue_t *q) {
+  while (!sched_queue_empty(q)) {
+    kthread_t *kt = ktqueue_dequeue(q);
+    sched_make_runnable(kt);
+  }
 }
 
 /*
@@ -140,10 +135,16 @@ sched_broadcast_on(ktqueue_t *q)
  * state, it should be on some queue. Otherwise, it will never be run
  * again.
  */
-void
-sched_cancel(struct kthread *kthr)
-{
-        NOT_YET_IMPLEMENTED("PROCS: sched_cancel");
+void sched_cancel(struct kthread *kthr) {
+  if (kthr->kt_state == KT_SLEEP_CANCELLABLE) {
+    kthr->kt_cancelled = 1;
+    ktqueue_remove(kthr->kt_wchan, kthr);
+    sched_make_runnable(kthr);
+  } else if (kthr->kt_state == KT_SLEEP) {
+    kthr->kt_cancelled = 1;
+  } else {
+    panic("Canceled thread in invalid state");
+  }
 }
 
 /*
@@ -182,10 +183,24 @@ sched_cancel(struct kthread *kthr)
  *
  * Note: The IPL is process specific.
  */
-void
-sched_switch(void)
-{
-        NOT_YET_IMPLEMENTED("PROCS: sched_switch");
+void sched_switch(void) {
+  // Disable interrupts
+  intr_setipl(IPL_HIGH);
+  // Wait for interrupt if empty
+  while (sched_queue_empty(&kt_runq)) {
+    intr_setipl(IPL_LOW);
+    intr_wait();
+  }
+  intr_setipl(IPL_HIGH);
+  // Switch threads
+  kthread_t *old = curthr;
+  // TODO: check calls to this function and see whether old proc is already on a new queue
+  //ktqueue_enqueue(&kt_runq, old); 
+  curthr = ktqueue_dequeue(&kt_runq);
+  curproc = curthr->kt_proc;
+  // Reenable interupts
+  intr_setipl(IPL_LOW);
+  context_switch(&old->kt_ctx, &curthr->kt_ctx);
 }
 
 /*
@@ -201,8 +216,12 @@ sched_switch(void)
  * more fine grained control, making modifying the IPL more
  * suitable. We modify the IPL here for consistency.
  */
-void
-sched_make_runnable(kthread_t *thr)
-{
-        NOT_YET_IMPLEMENTED("PROCS: sched_make_runnable");
+void sched_make_runnable(kthread_t *thr) {
+  KASSERT(thr->kt_state == KT_NO_STATE);
+  int old_ipl = intr_getipl();
+  KASSERT(thr && "Thread must be non null");
+  intr_setipl(IPL_HIGH);
+  thr->kt_state = KT_RUN;
+  ktqueue_enqueue(&kt_runq, thr);
+  intr_setipl(old_ipl);
 }

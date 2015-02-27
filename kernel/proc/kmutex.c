@@ -12,10 +12,9 @@
  * thread context.
  */
 
-void
-kmutex_init(kmutex_t *mtx)
-{
-        NOT_YET_IMPLEMENTED("PROCS: kmutex_init");
+void kmutex_init(kmutex_t *mtx) {
+  sched_queue_init(&mtx->km_waitq);
+  mtx->km_holder = NULL;
 }
 
 /*
@@ -24,21 +23,24 @@ kmutex_init(kmutex_t *mtx)
  *
  * No thread should ever try to lock a mutex it already has locked.
  */
-void
-kmutex_lock(kmutex_t *mtx)
-{
-        NOT_YET_IMPLEMENTED("PROCS: kmutex_lock");
+void kmutex_lock(kmutex_t *mtx) {
+  KASSERT(mtx->km_holder != curthr);
+  if (mtx->km_holder)
+    sched_sleep_on(&mtx->km_waitq);
+  mtx->km_holder = curthr;
 }
 
 /*
  * This should do the same as kmutex_lock, but use a cancellable sleep
  * instead.
  */
-int
-kmutex_lock_cancellable(kmutex_t *mtx)
-{
-        NOT_YET_IMPLEMENTED("PROCS: kmutex_lock_cancellable");
-        return 0;
+int kmutex_lock_cancellable(kmutex_t *mtx) {
+  if (mtx->km_holder) {
+    int canceled = sched_cancellable_sleep_on(&mtx->km_waitq);
+    mtx->km_holder = curthr;
+    return canceled;
+  }
+  return 0;
 }
 
 /*
@@ -55,8 +57,8 @@ kmutex_lock_cancellable(kmutex_t *mtx)
  *
  * @param mtx the mutex to unlock
  */
-void
-kmutex_unlock(kmutex_t *mtx)
-{
-        NOT_YET_IMPLEMENTED("PROCS: kmutex_unlock");
+void kmutex_unlock(kmutex_t *mtx) {
+  KASSERT(mtx->km_holder); // Make sure the mutex is locked
+  sched_wakeup_on(&mtx->km_waitq);
+  mtx->km_holder = NULL;
 }
