@@ -124,11 +124,11 @@ static void *bootstrap(int arg1, void *arg2) {
   /* necessary to finalize page table information */
   pt_template_init();
 
-  sched_init(); // TODO: this shouldn't be necessary, fix!
-
   curproc = proc_create("idle");
   curthr = kthread_create(curproc, idleproc_run, arg1, arg2);
-  sched_make_runnable(curthr);
+  curthr->kt_state = KT_RUN;
+  //sched_make_runnable(curthr);
+  dbg(DBG_INIT, "switching to idle\n");
   context_make_active(&curthr->kt_ctx);
 
   panic("weenix returned to bootstrap()!!! BAD!!!\n");
@@ -172,6 +172,7 @@ static void *idleproc_run(int arg1, void *arg2) {
   sched_make_runnable(initthr);
   /* Now wait for it */
   int status;
+  dbg(DBG_INIT, "waiting on init\n");
   pid_t child = do_waitpid(-1, 0, &status);
   KASSERT(PID_INIT == child);
 
@@ -238,25 +239,34 @@ void *do_nothing(int arg1, void *arg2) {
  * @param arg2 the second argument (unused)
  */
 static void *initproc_run(int arg1, void *arg2) {
-  KASSERT(0);
+  dbg(DBG_INIT, "init running\n");
+
+  dbg(DBG_INIT, "Creating test1 thread\n");
   proc_t *proc1 = proc_create("test1");
   kthread_t *thread1 = kthread_create(proc1, do_nothing, 0, NULL);
   sched_make_runnable(thread1);
+
+  dbg(DBG_INIT, "Waiting on test1\n");
   do_waitpid(proc1->p_pid, 0, NULL);
+
+  dbg(DBG_INIT, "Creating four threads\n");
   pid_t pids[4];
   for (int i = 0; i < 4; ++i) {
+    dbg(DBG_INIT, "Creating thread %d\n", i);
     proc_t *p = proc_create("test");
     pids[i] = p->p_pid;
+    kthread_t *thread = kthread_create(p, do_nothing, 0, NULL);
+    sched_make_runnable(thread);
   }
+  dbg(DBG_INIT, "Waiting on four threads");
   for (int i = 3; i >= 0; --i) {
     do_waitpid(pids[i], 0, NULL);
   }
   
+  dbg(DBG_INIT, "Testing waitpid edge cases\n");
   // Wait with no child processes
   do_waitpid(-1, 0, NULL);
   do_waitpid(1208312, 0, NULL);
-
-  proc_kill_all();
 
   return NULL;
 }

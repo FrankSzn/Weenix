@@ -35,6 +35,7 @@ void kmutex_lock(kmutex_t *mtx) {
  * instead.
  */
 int kmutex_lock_cancellable(kmutex_t *mtx) {
+  KASSERT(mtx->km_holder != curthr);
   if (mtx->km_holder) {
     int canceled = sched_cancellable_sleep_on(&mtx->km_waitq);
     mtx->km_holder = curthr;

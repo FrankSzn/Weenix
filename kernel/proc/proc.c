@@ -55,6 +55,7 @@ static int _proc_getid() {
   while (1) {
   failed:
     list_iterate_begin(&_proc_list, p, proc_t, p_list_link) {
+    //dbg(DBG_INIT, "pid %d taken\n", p->p_pid);
       if (p->p_pid == pid) {
         if ((pid = (pid + 1) % PROC_MAX_COUNT) == next_pid) {
           return -1;
@@ -78,10 +79,13 @@ static int _proc_getid() {
  * when reparenting processes to the init process.
  */
 proc_t *proc_create(char *name) {
+  dbg(DBG_INIT, "creating proc %s\n", name);
   // Allocate new proc
   proc_t *new_proc = slab_obj_alloc(proc_allocator);
   // Set PID
   new_proc->p_pid = _proc_getid();
+  dbg(DBG_INIT, "got pid %d\n", new_proc->p_pid);
+  KASSERT(new_proc->p_pid >= 0);
   // Set name
   strncpy(new_proc->p_comm, name, PROC_NAME_LEN);
   // Initialize thread and children lists
@@ -89,7 +93,6 @@ proc_t *proc_create(char *name) {
   list_init(&new_proc->p_children);
   list_link_init(&new_proc->p_list_link);
   list_link_init(&new_proc->p_child_link);
-
   new_proc->p_pproc = curproc;
   new_proc->p_status = 0;
   new_proc->p_state = PROC_RUNNING;
@@ -111,6 +114,7 @@ proc_t *proc_create(char *name) {
   // /* VFS-related: */
   // /* VM */
 
+  dbg(DBG_INIT, "returning proc %s\n", name);
   return new_proc;
 }
 
@@ -141,9 +145,6 @@ proc_t *proc_create(char *name) {
 void proc_cleanup(int status) {
   // Set exit status
   curproc->p_status = status;
-  curproc->p_state = PROC_DEAD;
-
-  pt_destroy_pagedir(curproc->p_pagedir);
 
   // Handle init case
   if (curproc->p_pid == PID_INIT)
@@ -158,8 +159,10 @@ void proc_cleanup(int status) {
     list_iterate_end();
   }
 
+  list_remove(&curproc->p_list_link);
+
   // Wake parent
-  sched_broadcast_on(&curproc->p_wait);
+  sched_broadcast_on(&curproc->p_pproc->p_wait);
 
   // TODO: close files
   // TODO: clean up VM mappings
@@ -180,7 +183,7 @@ void proc_kill(proc_t *p, int status) {
   } else {
   kthread_t *iterator;
   list_iterate_begin(&p->p_threads, iterator, kthread_t, kt_plink) {
-    kthread_cancel(iterator, &status);
+    kthread_cancel(iterator, (void *) status);
   }
   list_iterate_end();
   }
@@ -239,8 +242,9 @@ list_t *proc_list() { return &_proc_list; }
  * necessarily mean that the process should be exited.
  */
 void proc_thread_exited(void *retval) {
-  kthread_destroy(curthr);
   proc_cleanup((int)retval);
+  curthr->kt_state = KT_EXITED;
+  curproc->p_state = PROC_DEAD;
   sched_switch();
 }
 
@@ -261,53 +265,39 @@ void proc_thread_exited(void *retval) {
  */
 pid_t do_waitpid(pid_t pid, int options, int *status) {
   KASSERT(!options);
+  KASSERT(pid >= -1);
   // Error if no children
   if (list_empty(&curproc->p_children))
     return -ECHILD;
-  if (pid == -1) {
-    while (1) {
-      // Iterate through children and reap dead ones
-      proc_t *iterator;
-      list_iterate_begin(&curproc->p_children, iterator, proc_t, p_child_link) {
+  int found = 0;
+  while (1) {
+    // Iterate through children and reap dead ones
+    proc_t *iterator;
+    list_iterate_begin(&curproc->p_children, iterator, proc_t, p_child_link) {
+      if (pid == -1 || (pid > 0 && iterator->p_pid == pid)) {
+        found = 1;
         if (iterator->p_state == PROC_DEAD) {
+          KASSERT(!list_empty(&iterator->p_threads));
+          kthread_t *thread = list_item(iterator->p_threads.l_next, kthread_t, kt_plink);
+          KASSERT(thread->kt_state == KT_EXITED);
           if (status)
             *status = iterator->p_status;
           list_remove(&iterator->p_child_link);
-          // TODO: proc destroy
-          if (status)
-            iterator->p_status = *status;
           pid_t pid = iterator->p_pid;
+          kthread_destroy(thread);
           slab_obj_free(proc_allocator, iterator);
+          pt_destroy_pagedir(iterator->p_pagedir);
           return pid;
-        }
-      }
-      list_iterate_end();
-      sched_cancellable_sleep_on(&curproc->p_wait); // TODO: what kind of sleep?
-    }
-  } else if (pid > 0) {
-    // Iterate through children and reap one with pid
-    proc_t *iterator;
-    list_iterate_begin(&curproc->p_children, iterator, proc_t, p_child_link) {
-      if (iterator->p_pid == pid) {
-        while (1) {
-          if (iterator->p_state == PROC_DEAD) {
-            if (status)
-              *status = iterator->p_status;
-            list_remove(&iterator->p_child_link);
-            slab_obj_free(proc_allocator, iterator);
-            return pid;
-          }
-          sched_cancellable_sleep_on(&curproc->p_wait);
         }
       }
     }
     list_iterate_end();
-    return -ECHILD; // Child not found
-  } else {
-    KASSERT(0);
-    return 0;
+    if (!found)
+      return -ECHILD;
+    sched_cancellable_sleep_on(&curproc->p_wait); // TODO: what kind of sleep?
   }
 }
+
 
 /*
  * Cancel all threads, join with them, and exit from the current
@@ -327,7 +317,7 @@ void do_exit(int status) {
   }
   list_iterate_end();
 #endif
-  kthread_exit(&status);
+  kthread_exit((void *) status);
 }
 
 size_t proc_info(const void *arg, char *buf, size_t osize) {

@@ -80,16 +80,19 @@ kthread_t *kthread_create(struct proc *p, kthread_func_t func, long arg1,
   new_kt->kt_state = KT_NO_STATE;
   list_link_init(&new_kt->kt_qlink);
   list_link_init(&new_kt->kt_plink);
+  list_insert_tail(&p->p_threads, &new_kt->kt_plink);
   return new_kt;
 }
 
+// Clean up the thread from another thread
 void kthread_destroy(kthread_t *t) {
+  dbg(DBG_INIT, "destroying thread of proc %d\n", t->kt_proc->p_pid);
   KASSERT(t && t->kt_kstack);
-  KASSERT(!list_link_is_linked(&t->kt_qlink));
   KASSERT(t->kt_state == KT_EXITED);
+  KASSERT(!list_link_is_linked(&t->kt_qlink));
   free_stack(t->kt_kstack);
-  if (list_link_is_linked(&t->kt_plink))
-    list_remove(&t->kt_plink);
+  //if (list_link_is_linked(&t->kt_plink))
+    //list_remove(&t->kt_plink);
   slab_obj_free(kthread_allocator, t);
 }
 
@@ -130,8 +133,11 @@ void kthread_cancel(kthread_t *kthr, void *retval) {
  * cleaned up.
  */
 void kthread_exit(void *retval) {
+  KASSERT(!curthr->kt_wchan);
+  KASSERT(!list_link_is_linked(&curthr->kt_qlink));
   curthr->kt_retval = retval;
   proc_thread_exited(retval);
+  KASSERT(curthr->kt_state == KT_EXITED);
 }
 
 /*
