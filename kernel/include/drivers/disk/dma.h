@@ -2,8 +2,8 @@
 
 /* Linux kernel: drivers/ata/libata-sff.c */
 #define DMA_COMMAND 0x00
-#define DMA_STATUS  0x02
-#define DMA_PRD     0x04 /* dword register */
+#define DMA_STATUS 0x02
+#define DMA_PRD 0x04 /* dword register */
 
 /**
  * Initializes the DMA subsystem.
@@ -33,7 +33,7 @@ void dma_reset(uint16_t busmaster_addr);
  * @param count the number of bytes to read/write
  * @param write true if writing, false if reading
  */
-void dma_load(uint8_t channel, void* start, int count);
+void dma_load(uint8_t channel, void *start, int count);
 
 /* 1/24/13 Commented this out for now, it isn't used anyway */
 /**

@@ -8,18 +8,15 @@
 #ifndef _ldnames_h_
 #define _ldnames_h_
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
+void _ldaddname(const char *name);
+int _ldchkname(const char *name);
 
-        void _ldaddname(const char *name);
-        int _ldchkname(const char *name);
-
-
-#ifdef  __cplusplus
+#ifdef __cplusplus
 }
 #endif
 
 #endif /* _ldnames_h_ */
-

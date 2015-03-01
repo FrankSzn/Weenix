@@ -3,8 +3,8 @@
 #include "proc/sched.h"
 
 typedef struct kmutex {
-        ktqueue_t       km_waitq;       /* wait queue */
-        struct kthread *km_holder;      /* current holder */
+  ktqueue_t km_waitq;        /* wait queue */
+  struct kthread *km_holder; /* current holder */
 } kmutex_t;
 
 /**
@@ -37,7 +37,7 @@ void kmutex_lock(kmutex_t *mtx);
  * @return 0 if the current thread now holds the mutex and -EINTR if
  * the sleep was cancelled and this thread does not hold the mutex
  */
-int  kmutex_lock_cancellable(kmutex_t *mtx);
+int kmutex_lock_cancellable(kmutex_t *mtx);
 
 /**
  * Unlocks the specified mutex.

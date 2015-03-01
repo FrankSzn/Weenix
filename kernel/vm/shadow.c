@@ -30,30 +30,25 @@ static slab_allocator_t *shadow_allocator;
 
 static void shadow_ref(mmobj_t *o);
 static void shadow_put(mmobj_t *o);
-static int  shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite, pframe_t **pf);
-static int  shadow_fillpage(mmobj_t *o, pframe_t *pf);
-static int  shadow_dirtypage(mmobj_t *o, pframe_t *pf);
-static int  shadow_cleanpage(mmobj_t *o, pframe_t *pf);
+static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
+                             pframe_t **pf);
+static int shadow_fillpage(mmobj_t *o, pframe_t *pf);
+static int shadow_dirtypage(mmobj_t *o, pframe_t *pf);
+static int shadow_cleanpage(mmobj_t *o, pframe_t *pf);
 
-static mmobj_ops_t shadow_mmobj_ops = {
-        .ref = shadow_ref,
-        .put = shadow_put,
-        .lookuppage = shadow_lookuppage,
-        .fillpage  = shadow_fillpage,
-        .dirtypage = shadow_dirtypage,
-        .cleanpage = shadow_cleanpage
-};
+static mmobj_ops_t shadow_mmobj_ops = {.ref = shadow_ref,
+                                       .put = shadow_put,
+                                       .lookuppage = shadow_lookuppage,
+                                       .fillpage = shadow_fillpage,
+                                       .dirtypage = shadow_dirtypage,
+                                       .cleanpage = shadow_cleanpage};
 
 /*
  * This function is called at boot time to initialize the
  * shadow page sub system. Currently it only initializes the
  * shadow_allocator object.
  */
-void
-shadow_init()
-{
-        NOT_YET_IMPLEMENTED("VM: shadow_init");
-}
+void shadow_init() { NOT_YET_IMPLEMENTED("VM: shadow_init"); }
 
 /*
  * You'll want to use the shadow_allocator to allocate the mmobj to
@@ -61,11 +56,9 @@ shadow_init()
  * macros which can be of use here. Make sure your initial
  * reference count is correct.
  */
-mmobj_t *
-shadow_create()
-{
-        NOT_YET_IMPLEMENTED("VM: shadow_create");
-        return NULL;
+mmobj_t *shadow_create() {
+  NOT_YET_IMPLEMENTED("VM: shadow_create");
+  return NULL;
 }
 
 /* Implementation of mmobj entry points: */
@@ -73,11 +66,7 @@ shadow_create()
 /*
  * Increment the reference count on the object.
  */
-static void
-shadow_ref(mmobj_t *o)
-{
-        NOT_YET_IMPLEMENTED("VM: shadow_ref");
-}
+static void shadow_ref(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: shadow_ref"); }
 
 /*
  * Decrement the reference count on the object. If, however, the
@@ -87,11 +76,7 @@ shadow_ref(mmobj_t *o)
  * be used again. You should unpin and uncache all of the object's
  * pages and then free the object itself.
  */
-static void
-shadow_put(mmobj_t *o)
-{
-        NOT_YET_IMPLEMENTED("VM: shadow_put");
-}
+static void shadow_put(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: shadow_put"); }
 
 /* This function looks up the given page in this shadow object. The
  * forwrite argument is true if the page is being looked up for
@@ -102,11 +87,10 @@ shadow_put(mmobj_t *o)
  * is true) is handled in shadow_fillpage, not here. It is important to
  * use iteration rather than recursion here as a recursive implementation
  * can overflow the kernel stack when looking down a long shadow chain */
-static int
-shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite, pframe_t **pf)
-{
-        NOT_YET_IMPLEMENTED("VM: shadow_lookuppage");
-        return 0;
+static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
+                             pframe_t **pf) {
+  NOT_YET_IMPLEMENTED("VM: shadow_lookuppage");
+  return 0;
 }
 
 /* As per the specification in mmobj.h, fill the page frame starting
@@ -120,25 +104,19 @@ shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite, pframe_t **pf)
  * It is important to use iteration rather than recursion here as a
  * recursive implementation can overflow the kernel stack when
  * looking down a long shadow chain */
-static int
-shadow_fillpage(mmobj_t *o, pframe_t *pf)
-{
-        NOT_YET_IMPLEMENTED("VM: shadow_fillpage");
-        return 0;
+static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
+  NOT_YET_IMPLEMENTED("VM: shadow_fillpage");
+  return 0;
 }
 
 /* These next two functions are not difficult. */
 
-static int
-shadow_dirtypage(mmobj_t *o, pframe_t *pf)
-{
-        NOT_YET_IMPLEMENTED("VM: shadow_dirtypage");
-        return -1;
+static int shadow_dirtypage(mmobj_t *o, pframe_t *pf) {
+  NOT_YET_IMPLEMENTED("VM: shadow_dirtypage");
+  return -1;
 }
 
-static int
-shadow_cleanpage(mmobj_t *o, pframe_t *pf)
-{
-        NOT_YET_IMPLEMENTED("VM: shadow_cleanpage");
-        return -1;
+static int shadow_cleanpage(mmobj_t *o, pframe_t *pf) {
+  NOT_YET_IMPLEMENTED("VM: shadow_cleanpage");
+  return -1;
 }

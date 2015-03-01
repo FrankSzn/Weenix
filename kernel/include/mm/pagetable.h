@@ -1,21 +1,21 @@
 #pragma once
 
-#define PD_PRESENT        0x001
-#define PD_WRITE          0x002
-#define PD_USER           0x004
-#define PD_WRITE_THROUGH  0x008
+#define PD_PRESENT 0x001
+#define PD_WRITE 0x002
+#define PD_USER 0x004
+#define PD_WRITE_THROUGH 0x008
 #define PD_CACHE_DISABLED 0x010
-#define PD_ACCESSED       0x020
+#define PD_ACCESSED 0x020
 
-#define PT_PRESENT        0x001
-#define PT_WRITE          0x002
-#define PT_USER           0x004
-#define PT_WRITE_THROUGH  0x008
+#define PT_PRESENT 0x001
+#define PT_WRITE 0x002
+#define PT_USER 0x004
+#define PT_WRITE_THROUGH 0x008
 #define PT_CACHE_DISABLED 0x010
-#define PT_ACCESSED       0x020
-#define PT_DIRTY          0x040
-#define PT_SIZE           0x080
-#define PT_GLOBAL         0x100
+#define PT_ACCESSED 0x020
+#define PT_DIRTY 0x040
+#define PT_SIZE 0x080
+#define PT_GLOBAL 0x100
 
 typedef uint32_t pte_t;
 typedef uint32_t pde_t;
@@ -47,7 +47,8 @@ uintptr_t pt_virt_to_phys(uintptr_t vaddr);
  * places an entry in it in the page directory. vaddr must be in the
  * user address space. Both vaddr and paddr must be page aligned.
  * Note that the TLB is not flushed by this function. */
-int pt_map(pagedir_t *pd, uintptr_t vaddr, uintptr_t paddr, uint32_t pdflags, uint32_t ptflags);
+int pt_map(pagedir_t *pd, uintptr_t vaddr, uintptr_t paddr, uint32_t pdflags,
+           uint32_t ptflags);
 
 /* Unmaps the page for the given virtual page from the given page
  * directory. vaddr must be in the user address space. vaddr must

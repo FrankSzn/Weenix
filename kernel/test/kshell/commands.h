@@ -2,8 +2,7 @@
 
 #include "test/kshell/kshell.h"
 
-#define KSHELL_CMD(name) \
-        int kshell_ ## name(kshell_t *ksh, int argc, char **argv)
+#define KSHELL_CMD(name) int kshell_##name(kshell_t *ksh, int argc, char **argv)
 
 KSHELL_CMD(help);
 KSHELL_CMD(exit);

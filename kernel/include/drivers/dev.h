@@ -31,19 +31,19 @@
  *         - and so on...
  */
 
-#define MINOR_BITS              8
-#define MINOR_MASK              ((1U << MINOR_BITS) - 1)
-#define MAJOR(devid)            ((unsigned) ((devid) >> MINOR_BITS))
-#define MINOR(devid)            ((unsigned) ((devid) & MINOR_MASK))
-#define MKDEVID(major, minor)   (((major) << MINOR_BITS) | (minor))
+#define MINOR_BITS 8
+#define MINOR_MASK ((1U << MINOR_BITS) - 1)
+#define MAJOR(devid) ((unsigned)((devid) >> MINOR_BITS))
+#define MINOR(devid) ((unsigned)((devid)&MINOR_MASK))
+#define MKDEVID(major, minor) (((major) << MINOR_BITS) | (minor))
 
 /* convenience definition: the NULL device id: */
-#define NULL_DEVID              (MKDEVID(0, 0))
-#define MEM_NULL_DEVID          (MKDEVID(1, 0))
-#define MEM_ZERO_DEVID          (MKDEVID(1, 1))
+#define NULL_DEVID (MKDEVID(0, 0))
+#define MEM_NULL_DEVID (MKDEVID(1, 0))
+#define MEM_ZERO_DEVID (MKDEVID(1, 1))
 
 #define DISK_MAJOR 1
 
-#define MEM_MAJOR       1
-#define MEM_NULL_MINOR  0
-#define MEM_ZERO_MINOR  1
+#define MEM_MAJOR 1
+#define MEM_NULL_MINOR 0
+#define MEM_ZERO_MINOR 1

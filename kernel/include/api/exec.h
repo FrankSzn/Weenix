@@ -4,7 +4,8 @@
 
 struct regs;
 
-int do_execve(const char *filename, char *const *argv, char *const *envp, struct regs *regs);
+int do_execve(const char *filename, char *const *argv, char *const *envp,
+              struct regs *regs);
 
 void kernel_execve(const char *filename, char *const *argv, char *const *envp);
 

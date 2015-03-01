@@ -52,9 +52,7 @@
  * Note that this function "returns" the new break through the "ret" argument.
  * Return 0 on success, -errno on failure.
  */
-int
-do_brk(void *addr, void **ret)
-{
-        NOT_YET_IMPLEMENTED("VM: do_brk");
-        return 0;
+int do_brk(void *addr, void **ret) {
+  NOT_YET_IMPLEMENTED("VM: do_brk");
+  return 0;
 }

@@ -6,12 +6,12 @@ extern void *_etext;
 extern void *_edata;
 extern void *_end;
 
-#define text_start ((void *) &__executable_start)
-#define text_end ((void *) &_etext)
-#define data_start ((void *) &_etext)
-#define data_end ((void *) &_edata)
-#define bss_start ((void *) &_edata)
-#define bss_end ((void *) &_end)
+#define text_start ((void *)&__executable_start)
+#define text_end ((void *)&_etext)
+#define data_start ((void *)&_etext)
+#define data_end ((void *)&_edata)
+#define bss_start ((void *)&_edata)
+#define bss_end ((void *)&_end)
 
 /* The following is the default linux linker script, for reference */
 #if 0

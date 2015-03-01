@@ -5,7 +5,4 @@
 #include "weenix/syscall.h"
 #include "weenix/trap.h"
 
-int main(int argc, char **argv)
-{
-        return trap(SYS_kshell, (uint32_t)0);
-}
+int main(int argc, char **argv) { return trap(SYS_kshell, (uint32_t)0); }

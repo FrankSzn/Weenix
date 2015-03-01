@@ -30,14 +30,11 @@
  * After error checking most of the work of this function is
  * done by vmmap_map(), but remember to clear the TLB.
  */
-int
-do_mmap(void *addr, size_t len, int prot, int flags,
-        int fd, off_t off, void **ret)
-{
-        NOT_YET_IMPLEMENTED("VM: do_mmap");
-        return -1;
+int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
+            void **ret) {
+  NOT_YET_IMPLEMENTED("VM: do_mmap");
+  return -1;
 }
-
 
 /*
  * This function implements the munmap(2) syscall.
@@ -46,10 +43,7 @@ do_mmap(void *addr, size_t len, int prot, int flags,
  * before calling upon vmmap_remove() to do most of the work.
  * Remember to clear the TLB.
  */
-int
-do_munmap(void *addr, size_t len)
-{
-        NOT_YET_IMPLEMENTED("VM: do_munmap");
-        return -1;
+int do_munmap(void *addr, size_t len) {
+  NOT_YET_IMPLEMENTED("VM: do_munmap");
+  return -1;
 }
-

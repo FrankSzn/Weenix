@@ -4,9 +4,10 @@
 
 #include "util/list.h"
 
-#define dprintf(x, args...) dbg(DBG_TEST, x, ## args)
+#define dprintf(x, args...) dbg(DBG_TEST, x, ##args)
 
-#define KSH_BUF_SIZE 1024 /* This really just needs to be as large as
+#define KSH_BUF_SIZE                                                           \
+  1024 /* This really just needs to be as large as                             \
 * the line discipline buffer */
 #define KSH_CMD_NAME_LEN 16
 #define KSH_MAX_ARGS 128
@@ -16,16 +17,16 @@ struct bytedev;
 struct kshell_command;
 
 struct kshell {
-        /* If we have a filesystem, we can write to the file
-         * descriptor. Otherwise, we need to write to a byte device */
+/* If we have a filesystem, we can write to the file
+ * descriptor. Otherwise, we need to write to a byte device */
 #ifdef __VFS__
-        int ksh_fd;
+  int ksh_fd;
 
-        /* Used for redirection */
-        int ksh_out_fd;
-        int ksh_in_fd;
+  /* Used for redirection */
+  int ksh_out_fd;
+  int ksh_in_fd;
 #else
-        struct bytedev *ksh_bd;
+  struct bytedev *ksh_bd;
 #endif
 };
 

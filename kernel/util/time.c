@@ -15,17 +15,13 @@
 #ifdef __UPREEMPT__
 static unsigned int ms = 0;
 
-static void pit_handler(regs_t *regs)
-{
-  dbg(DBG_CORE, "PIT HANDLER FIRED\n");
-}
+static void pit_handler(regs_t *regs) { dbg(DBG_CORE, "PIT HANDLER FIRED\n"); }
 
 /* Uncomment this to enable the apic timer to
  * call the pit_handler for userland preemption
  */
 
-static __attribute__((unused)) void time_init(void)
-{
+static __attribute__((unused)) void time_init(void) {
   intr_map(APIC_TIMER_IRQ, APIC_TIMER_IRQ);
   intr_register(APIC_TIMER_IRQ, pit_handler);
   /* TODO: figure out how this argument converts to hertz */

@@ -119,8 +119,7 @@ kthread_t *sched_wakeup_on(ktqueue_t *q) {
   if (sched_queue_empty(q))
     return NULL;
   kthread_t *kt = ktqueue_dequeue(q);
-  KASSERT(kt->kt_state == KT_SLEEP || 
-      kt->kt_state == KT_SLEEP_CANCELLABLE);
+  KASSERT(kt->kt_state == KT_SLEEP || kt->kt_state == KT_SLEEP_CANCELLABLE);
   sched_make_runnable(kt);
   return kt;
 }
@@ -128,8 +127,7 @@ kthread_t *sched_wakeup_on(ktqueue_t *q) {
 void sched_broadcast_on(ktqueue_t *q) {
   while (!sched_queue_empty(q)) {
     kthread_t *kt = ktqueue_dequeue(q);
-    KASSERT(kt->kt_state == KT_SLEEP || 
-        kt->kt_state == KT_SLEEP_CANCELLABLE);
+    KASSERT(kt->kt_state == KT_SLEEP || kt->kt_state == KT_SLEEP_CANCELLABLE);
     sched_make_runnable(kt);
   }
 }
@@ -202,7 +200,7 @@ void sched_switch(void) {
   intr_setipl(IPL_HIGH);
   // Switch threads
   kthread_t *old = curthr;
-  //KASSERT(old->kt_wchan);
+  // KASSERT(old->kt_wchan);
   curthr = ktqueue_dequeue(&kt_runq);
   curproc = curthr->kt_proc;
   // Reenable interupts
@@ -225,9 +223,8 @@ void sched_switch(void) {
  * suitable. We modify the IPL here for consistency.
  */
 void sched_make_runnable(kthread_t *thr) {
-  KASSERT(thr->kt_state == KT_SLEEP ||
-      thr->kt_state == KT_SLEEP_CANCELLABLE ||
-      thr->kt_state == KT_NO_STATE);
+  KASSERT(thr->kt_state == KT_SLEEP || thr->kt_state == KT_SLEEP_CANCELLABLE ||
+          thr->kt_state == KT_NO_STATE);
   KASSERT(!thr->kt_wchan);
   int old_ipl = intr_getipl();
   KASSERT(thr && "Thread must be non null");

@@ -49,7 +49,8 @@
  * SUCH DAMAGE.
  *
  *      @(#)stdarg.h    8.1 (Berkeley) 6/10/93
- * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp $
+ * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp
+ *$
  */
 
 #pragma once
@@ -72,9 +73,8 @@ int sprintf(char *buf, const char *fmt, ...);
  * characters writen, not including the null character. The function
  * returns the number of characters left in the buffer (after taking
  * in to account the null character). */
-int iprintf(char **str, size_t *size, char *fmt, ...) __attribute__((format(printf, 3, 4)));
+int iprintf(char **str, size_t *size, char *fmt, ...)
+    __attribute__((format(printf, 3, 4)));
 
 int vsscanf(const char *buf, const char *fmt, va_list args);
 int sscanf(const char *buf, const char *fmt, ...);
-
-

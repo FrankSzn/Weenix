@@ -21,44 +21,43 @@ struct blockdev_ops;
  * Represents a Weenix block device.
  */
 typedef struct blockdev {
-        /* Fields that should be initialized by drivers: */
-        devid_t bd_id;
+  /* Fields that should be initialized by drivers: */
+  devid_t bd_id;
 
-        struct blockdev_ops  *bd_ops;
+  struct blockdev_ops *bd_ops;
 
-        /* Fields that should be ignored by drivers: */
-        struct mmobj bd_mmobj;
+  /* Fields that should be ignored by drivers: */
+  struct mmobj bd_mmobj;
 
-        /* Link on the list of block-oriented devices */
-        list_link_t bd_link;
+  /* Link on the list of block-oriented devices */
+  list_link_t bd_link;
 } blockdev_t;
 
 typedef struct blockdev_ops {
-        /**
-         * Reads a block from the block device. This call will block.
-         *
-         * @param bdev the block device
-         * @param buf the memory into which to read the block (must be
-         *      page-aligned)
-         * @param loc the number of the block to start reading from
-         * @param count the number of blocks to read
-         * @return 0 on success, -errno on failure
-         */
-        int (*read_block)(blockdev_t *bdev, char *buf,
-                          blocknum_t loc, size_t count);
+  /**
+   * Reads a block from the block device. This call will block.
+   *
+   * @param bdev the block device
+   * @param buf the memory into which to read the block (must be
+   *      page-aligned)
+   * @param loc the number of the block to start reading from
+   * @param count the number of blocks to read
+   * @return 0 on success, -errno on failure
+   */
+  int (*read_block)(blockdev_t *bdev, char *buf, blocknum_t loc, size_t count);
 
-        /**
-         * Writes a block to the block device. This call will block.
-         *
-         * @param bdev the block device
-         * @param buf the memory from which to write the block (must be
-         *      page-aligned)
-         * @param loc the number of the block to start writing at
-         * @param count the number of blocks to write
-         * @return 0 on success, -errno on failure
-         */
-        int (*write_block)(blockdev_t *bdev, const char *buf,
-                           blocknum_t loc, size_t count);
+  /**
+   * Writes a block to the block device. This call will block.
+   *
+   * @param bdev the block device
+   * @param buf the memory from which to write the block (must be
+   *      page-aligned)
+   * @param loc the number of the block to start writing at
+   * @param count the number of blocks to write
+   * @return 0 on success, -errno on failure
+   */
+  int (*write_block)(blockdev_t *bdev, const char *buf, blocknum_t loc,
+                     size_t count);
 } blockdev_ops_t;
 
 /**

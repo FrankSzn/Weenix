@@ -4,8 +4,8 @@
 
 struct kthread;
 typedef struct ktqueue {
-        list_t          tq_list;
-        int             tq_size;
+  list_t tq_list;
+  int tq_size;
 } ktqueue_t;
 
 /**

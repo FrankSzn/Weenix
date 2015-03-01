@@ -49,7 +49,8 @@
  * SUCH DAMAGE.
  *
  *      @(#)stdarg.h    8.1 (Berkeley) 6/10/93
- * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp $
+ * $FreeBSD: src/sys/i386/include/stdarg.h,v 1.10 1999/08/28 00:44:26 peter Exp
+ *$
  */
 
 #pragma once
@@ -58,21 +59,21 @@
 #include "stdarg.h"
 
 /* string and memory manipulation */
-int    memcmp(const void *cs, const void *ct, size_t count);
-void  *memcpy(void *dest, const void *src, size_t count);
-int    strncmp(const char *cs, const char *ct, size_t count);
-int    strcmp(const char *cs, const char *ct);
-char  *strcpy(char *dest, const char *src);
-char  *strncpy(char *dest, const char *src, size_t count);
-void  *memset(void *s, int c, size_t count);
+int memcmp(const void *cs, const void *ct, size_t count);
+void *memcpy(void *dest, const void *src, size_t count);
+int strncmp(const char *cs, const char *ct, size_t count);
+int strcmp(const char *cs, const char *ct);
+char *strcpy(char *dest, const char *src);
+char *strncpy(char *dest, const char *src, size_t count);
+void *memset(void *s, int c, size_t count);
 size_t strnlen(const char *s, size_t count);
 size_t strlen(const char *s);
-char  *strchr(const char *s, int c);
-char  *strrchr(const char *s, int c);
-char  *strstr(const char *s1, const char *s2);
-char  *strcat(char *dest, const char *src);
-char  *strdup(const char *s);
-char  *strtok(char *s, const char *d);
+char *strchr(const char *s, int c);
+char *strrchr(const char *s, int c);
+char *strstr(const char *s1, const char *s2);
+char *strcat(char *dest, const char *src);
+char *strdup(const char *s);
+char *strtok(char *s, const char *d);
 
 /* return string-representation of an errno */
-char  *strerror(int errnum);
+char *strerror(int errnum);

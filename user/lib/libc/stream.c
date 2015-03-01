@@ -1,6 +1,6 @@
 #include "stdio.h"
 
-static int stdstreams[3] = { 0, 1, 2 };
+static int stdstreams[3] = {0, 1, 2};
 
 FILE *stdin = &stdstreams[0];
 FILE *stdout = &stdstreams[1];

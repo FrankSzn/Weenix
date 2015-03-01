@@ -3,7 +3,7 @@
 /* Define SLAB_REDZONE to add top and bottom redzones to every object.
  * Use kmem_check_redzones() liberally throughout your code to test
  * for memory pissing. */
-#define SLAB_REDZONE            0xdeadbeef
+#define SLAB_REDZONE 0xdeadbeef
 
 /* Define SLAB_CHECK_FREE to add extra book keeping to make sure there
  * are no double frees. */

@@ -12,9 +12,9 @@
 #endif
 
 typedef struct dirent {
-        ino_t   d_ino;                  /* entry inode number */
-        off_t   d_off;                  /* seek pointer of next entry */
-        char    d_name[NAME_LEN + 1];   /* filename */
+  ino_t d_ino;               /* entry inode number */
+  off_t d_off;               /* seek pointer of next entry */
+  char d_name[NAME_LEN + 1]; /* filename */
 } dirent_t;
 
 #define d_fileno d_ino

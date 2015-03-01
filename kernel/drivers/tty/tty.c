@@ -13,8 +13,7 @@
 
 #include "util/debug.h"
 
-#define bd_to_tty(bd) \
-        CONTAINER_OF(bd, tty_device_t, tty_cdev)
+#define bd_to_tty(bd) CONTAINER_OF(bd, tty_device_t, tty_cdev)
 
 /**
  * The callback function called by the virtual terminal subsystem when
@@ -58,64 +57,58 @@ static int tty_write(bytedev_t *dev, int offset, const void *buf, int count);
  */
 static void tty_echo(tty_driver_t *driver, const char *out);
 
-static bytedev_ops_t tty_bytedev_ops = {
-        tty_read,
-        tty_write,
-        NULL,
-        NULL,
-        NULL,
-        NULL
-};
+static bytedev_ops_t tty_bytedev_ops = {tty_read, tty_write, NULL,
+                                        NULL,     NULL,      NULL};
 
-void
-tty_init()
-{
-        screen_init();
-        vt_init();
-        keyboard_init();
+void tty_init() {
+  screen_init();
+  vt_init();
+  keyboard_init();
 
-        /*
-         * Create NTERMS tty's, all with the default line discipline
-         * and a virtual terminal driver.
-         */
-        int nterms, i;
+  /*
+   * Create NTERMS tty's, all with the default line discipline
+   * and a virtual terminal driver.
+   */
+  int nterms, i;
 
-        nterms = vt_num_terminals();
-        for (i = 0; i < nterms; ++i) {
-                tty_driver_t *ttyd;
-                tty_device_t *tty;
-                tty_ldisc_t *ldisc;
+  nterms = vt_num_terminals();
+  for (i = 0; i < nterms; ++i) {
+    tty_driver_t *ttyd;
+    tty_device_t *tty;
+    tty_ldisc_t *ldisc;
 
-                ttyd = vt_get_tty_driver(i);
-                KASSERT(NULL != ttyd);
-                KASSERT(NULL != ttyd->ttd_ops);
-                KASSERT(NULL != ttyd->ttd_ops->register_callback_handler);
+    ttyd = vt_get_tty_driver(i);
+    KASSERT(NULL != ttyd);
+    KASSERT(NULL != ttyd->ttd_ops);
+    KASSERT(NULL != ttyd->ttd_ops->register_callback_handler);
 
-                tty = tty_create(ttyd, i);
-                if (NULL == tty) {
-                        panic("Not enough memory to allocate tty\n");
-                }
+    tty = tty_create(ttyd, i);
+    if (NULL == tty) {
+      panic("Not enough memory to allocate tty\n");
+    }
 
-                if (NULL != ttyd->ttd_ops->register_callback_handler(
-                            ttyd, tty_global_driver_callback, (void *)tty)) {
-                        panic("Callback already registered "
-                              "to terminal %d\n", i);
-                }
+    if (NULL !=
+        ttyd->ttd_ops->register_callback_handler(
+            ttyd, tty_global_driver_callback, (void *)tty)) {
+      panic("Callback already registered "
+            "to terminal %d\n",
+            i);
+    }
 
-                ldisc = n_tty_create();
-                if (NULL == ldisc) {
-                        panic("Not enough memory to allocate "
-                              "line discipline\n");
-                }
-                KASSERT(NULL != ldisc);
-                KASSERT(NULL != ldisc->ld_ops);
-                KASSERT(NULL != ldisc->ld_ops->attach);
-                ldisc->ld_ops->attach(ldisc, tty);
+    ldisc = n_tty_create();
+    if (NULL == ldisc) {
+      panic("Not enough memory to allocate "
+            "line discipline\n");
+    }
+    KASSERT(NULL != ldisc);
+    KASSERT(NULL != ldisc->ld_ops);
+    KASSERT(NULL != ldisc->ld_ops->attach);
+    ldisc->ld_ops->attach(ldisc, tty);
 
-                if (bytedev_register(&tty->tty_cdev) != 0) {
-                        panic("Error registering tty as byte device\n");
-                }
-        }
+    if (bytedev_register(&tty->tty_cdev) != 0) {
+      panic("Error registering tty as byte device\n");
+    }
+  }
 }
 
 /*
@@ -124,11 +117,9 @@ tty_init()
  * struct, use the MKDEVID macro and the correct byte device function
  * table for a tty.
  */
-tty_device_t *
-tty_create(tty_driver_t *driver, int id)
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: tty_create");
-        return 0;
+tty_device_t *tty_create(tty_driver_t *driver, int id) {
+  NOT_YET_IMPLEMENTED("DRIVERS: tty_create");
+  return 0;
 }
 
 /*
@@ -144,20 +135,16 @@ tty_create(tty_driver_t *driver, int id)
  * of receive_char() should be echoed to the screen using the
  * tty_echo() function.
  */
-void
-tty_global_driver_callback(void *arg, char c)
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: tty_global_driver_callback");
+void tty_global_driver_callback(void *arg, char c) {
+  NOT_YET_IMPLEMENTED("DRIVERS: tty_global_driver_callback");
 }
 
 /*
  * You should use the driver's provide_char function to output
  * each character of the string 'out'.
  */
-void
-tty_echo(tty_driver_t *driver, const char *out)
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: tty_echo");
+void tty_echo(tty_driver_t *driver, const char *out) {
+  NOT_YET_IMPLEMENTED("DRIVERS: tty_echo");
 }
 
 /*
@@ -165,12 +152,10 @@ tty_echo(tty_driver_t *driver, const char *out)
  * and unblock I/O. We do not want to receive interrupts while
  * modifying the input buffer.
  */
-int
-tty_read(bytedev_t *dev, int offset, void *buf, int count)
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: tty_read");
+int tty_read(bytedev_t *dev, int offset, void *buf, int count) {
+  NOT_YET_IMPLEMENTED("DRIVERS: tty_read");
 
-        return 0;
+  return 0;
 }
 
 /*
@@ -181,10 +166,8 @@ tty_read(bytedev_t *dev, int offset, void *buf, int count)
  * Important: You should return the number of bytes processed,
  * _NOT_ the number of bytes written out to the driver.
  */
-int
-tty_write(bytedev_t *dev, int offset, const void *buf, int count)
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: tty_write");
+int tty_write(bytedev_t *dev, int offset, const void *buf, int count) {
+  NOT_YET_IMPLEMENTED("DRIVERS: tty_write");
 
-        return 0;
+  return 0;
 }

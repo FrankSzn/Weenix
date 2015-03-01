@@ -23,10 +23,12 @@
 #define IPL_HIGH (0xff)
 
 typedef struct regs {
-        uint32_t r_es, r_ds; /* pushed manually */
-        uint32_t r_edi, r_esi, r_ebp, r_esp, r_ebx, r_edx, r_ecx, r_eax; /* pushed by pusha */
-        uint32_t r_intr, r_err; /* intr number and error code */
-        uint32_t r_eip, r_cs, r_eflags, r_useresp, r_ss; /* pushed by the processor automatically */
+  uint32_t r_es, r_ds; /* pushed manually */
+  uint32_t r_edi, r_esi, r_ebp, r_esp, r_ebx, r_edx, r_ecx,
+      r_eax;              /* pushed by pusha */
+  uint32_t r_intr, r_err; /* intr number and error code */
+  uint32_t r_eip, r_cs, r_eflags, r_useresp,
+      r_ss; /* pushed by the processor automatically */
 } regs_t;
 
 void intr_init();
@@ -46,43 +48,30 @@ typedef void (*intr_handler_t)(regs_t *regs);
 intr_handler_t intr_register(uint8_t intr, intr_handler_t handler);
 int32_t intr_map(uint16_t irq, uint8_t intr);
 
-static inline void intr_enable()
-{
-        __asm__ volatile("sti");
-}
+static inline void intr_enable() { __asm__ volatile("sti"); }
 
-static inline void intr_disable()
-{
-        __asm__ volatile("cli");
-}
+static inline void intr_disable() { __asm__ volatile("cli"); }
 
 /* Atomically enables interrupts using the sti
  * instruction and puts the processor into a halted
  * state, this function returns once an interrupt
  * occurs. */
-static inline void intr_wait()
-{
-        /* the sti instruction enables interrupts, however
-         * interrupts are not checked for until the next
-         * instruction is executed, this means that the following
-         * code will not be succeptible to a bug where an
-         * interrupt occurs between the sti and hlt commands
-         * and does not wake us up from the hlt. */
-        __asm__ volatile("sti\n\t"
-                         "hlt");
+static inline void intr_wait() {
+  /* the sti instruction enables interrupts, however
+   * interrupts are not checked for until the next
+   * instruction is executed, this means that the following
+   * code will not be succeptible to a bug where an
+   * interrupt occurs between the sti and hlt commands
+   * and does not wake us up from the hlt. */
+  __asm__ volatile("sti\n\t"
+                   "hlt");
 }
 
 /* Sets the interrupt priority level for hardware interrupts.
  * At initialization time devices should detect their individual
  * IPLs and save them for use with this function. IPL_LOW allows
  * all hardware interrupts. IPL_HIGH blocks all hardware interrupts */
-static inline void intr_setipl(uint8_t ipl)
-{
-        apic_setipl(ipl);
-}
+static inline void intr_setipl(uint8_t ipl) { apic_setipl(ipl); }
 
 /* Retreives the current interrupt priority level. */
-static inline uint8_t intr_getipl()
-{
-        return apic_getipl();
-}
+static inline uint8_t intr_getipl() { return apic_getipl(); }

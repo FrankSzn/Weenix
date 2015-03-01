@@ -26,8 +26,6 @@
 #define LATCH (CLOCK_TICK_RATE / HZ)*/
 static unsigned int ms = 0;
 
-void pit_handler(regs_t* regs) {
-}
+void pit_handler(regs_t *regs) {}
 
-void pit_init(uint8_t intr) {
-}
+void pit_init(uint8_t intr) {}

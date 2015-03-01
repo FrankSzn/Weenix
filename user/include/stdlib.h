@@ -27,8 +27,8 @@ long atol(const char *val);
 float atof(const char *val);
 
 #define atoi(val) ((int)strtol(val, NULL, 10))
-#define atol(val)       strtol(val, NULL, 10)
-#define atolf(val)      strtof(val, NULL)
+#define atol(val) strtol(val, NULL, 10)
+#define atolf(val) strtof(val, NULL)
 
 long strtol(const char *nptr, char **endptr, int base);
 long long strtoll(const char *nptr, char **endptr, int base);
@@ -36,7 +36,6 @@ double strtod(const char *nptr, char **endptr);
 float strtof(const char *nptr, char **endptr);
 long double strtold(const char *nptr, char **endptr);
 /* --- END NYI --- */
-
 
 /* Malloc library */
 void *malloc(size_t size);
@@ -46,5 +45,5 @@ void *calloc(size_t nelem, size_t elsize);
 
 #define RAND_MAX INT_MAX
 
-int  rand(void);
+int rand(void);
 void srand(unsigned int seed);

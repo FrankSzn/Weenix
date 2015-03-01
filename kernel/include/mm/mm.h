@@ -1,11 +1,11 @@
 #pragma once
 
-#define MM_POISON             1
-#define MM_POISON_ALLOC       0xBB
-#define MM_POISON_FREE        0xDD
+#define MM_POISON 1
+#define MM_POISON_ALLOC 0xBB
+#define MM_POISON_FREE 0xDD
 
-#define USER_MEM_LOW          0x00400000 /* inclusive */
-#define USER_MEM_HIGH         0xc0000000 /* exclusive */
+#define USER_MEM_LOW 0x00400000  /* inclusive */
+#define USER_MEM_HIGH 0xc0000000 /* exclusive */
 
 #define PTR_SIZE (sizeof(void *))
 #define PTR_MASK (PTR_SIZE - 1)

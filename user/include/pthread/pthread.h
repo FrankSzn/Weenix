@@ -4,37 +4,35 @@ struct pthread;
 struct pthread_cond;
 struct pthread_mutex;
 
-typedef struct pthread          *pthread_t;
-typedef struct pthread_mutex    *pthread_mutex_t;
-typedef struct pthread_cond     *pthread_cond_t;
+typedef struct pthread *pthread_t;
+typedef struct pthread_mutex *pthread_mutex_t;
+typedef struct pthread_cond *pthread_cond_t;
 
 /* Attributes NYI */
 typedef int pthread_attr_t;
 typedef int pthread_mutexattr_t;
 typedef int pthread_condattr_t;
 
-void            pthread_cleanup_pop(int);
-void            pthread_cleanup_push(void (*)(void *), void *routine_arg);
+void pthread_cleanup_pop(int);
+void pthread_cleanup_push(void (*)(void *), void *routine_arg);
 
-int             pthread_cond_broadcast(pthread_cond_t *cond);
-int             pthread_cond_destroy(pthread_cond_t *cond);
-int             pthread_cond_init(pthread_cond_t *cond,
-                                  const pthread_condattr_t *);
-int             pthread_cond_signal(pthread_cond_t *cond);
-int             pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mtx);
-int             pthread_create(pthread_t *thr, const pthread_attr_t *,
-                               void * ( *)(void *), void *);
-int             pthread_detach(pthread_t thr);
-int             pthread_equal(pthread_t, pthread_t);
-void            pthread_exit(void *retval);
-int             pthread_join(pthread_t thr, void **retval);
-int             pthread_mutex_init(pthread_mutex_t *mtx,
-                                   const pthread_mutexattr_t *);
-int             pthread_mutex_lock(pthread_mutex_t *mtx);
-int             pthread_mutex_trylock(pthread_mutex_t *mtx);
-int             pthread_mutex_unlock(pthread_mutex_t *mtx);
-void            pthread_yield(void);
-int             pthread_cancel(pthread_t thr);
+int pthread_cond_broadcast(pthread_cond_t *cond);
+int pthread_cond_destroy(pthread_cond_t *cond);
+int pthread_cond_init(pthread_cond_t *cond, const pthread_condattr_t *);
+int pthread_cond_signal(pthread_cond_t *cond);
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mtx);
+int pthread_create(pthread_t *thr, const pthread_attr_t *, void *(*)(void *),
+                   void *);
+int pthread_detach(pthread_t thr);
+int pthread_equal(pthread_t, pthread_t);
+void pthread_exit(void *retval);
+int pthread_join(pthread_t thr, void **retval);
+int pthread_mutex_init(pthread_mutex_t *mtx, const pthread_mutexattr_t *);
+int pthread_mutex_lock(pthread_mutex_t *mtx);
+int pthread_mutex_trylock(pthread_mutex_t *mtx);
+int pthread_mutex_unlock(pthread_mutex_t *mtx);
+void pthread_yield(void);
+int pthread_cancel(pthread_t thr);
 
 /* Everything below NYI */
 #if 0

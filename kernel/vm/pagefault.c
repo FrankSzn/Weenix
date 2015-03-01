@@ -48,8 +48,6 @@
  *              address which caused the fault, possible values
  *              can be found in pagefault.h
  */
-void
-handle_pagefault(uintptr_t vaddr, uint32_t cause)
-{
-        NOT_YET_IMPLEMENTED("VM: handle_pagefault");
+void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
+  NOT_YET_IMPLEMENTED("VM: handle_pagefault");
 }

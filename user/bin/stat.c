@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 const char *modestr(int mode) {
-  switch(mode) {
+  switch (mode) {
   case S_IFCHR:
     return "Character device";
   case S_IFBLK:

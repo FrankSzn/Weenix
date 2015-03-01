@@ -55,7 +55,7 @@ static int _proc_getid() {
   while (1) {
   failed:
     list_iterate_begin(&_proc_list, p, proc_t, p_list_link) {
-    //dbg(DBG_INIT, "pid %d taken\n", p->p_pid);
+      // dbg(DBG_INIT, "pid %d taken\n", p->p_pid);
       if (p->p_pid == pid) {
         if ((pid = (pid + 1) % PROC_MAX_COUNT) == next_pid) {
           return -1;
@@ -181,11 +181,11 @@ void proc_kill(proc_t *p, int status) {
   if (curproc == p) {
     do_exit(status);
   } else {
-  kthread_t *iterator;
-  list_iterate_begin(&p->p_threads, iterator, kthread_t, kt_plink) {
-    kthread_cancel(iterator, (void *) status);
-  }
-  list_iterate_end();
+    kthread_t *iterator;
+    list_iterate_begin(&p->p_threads, iterator, kthread_t, kt_plink) {
+      kthread_cancel(iterator, (void *)status);
+    }
+    list_iterate_end();
   }
 }
 
@@ -278,7 +278,8 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
         found = 1;
         if (iterator->p_state == PROC_DEAD) {
           KASSERT(!list_empty(&iterator->p_threads));
-          kthread_t *thread = list_item(iterator->p_threads.l_next, kthread_t, kt_plink);
+          kthread_t *thread =
+              list_item(iterator->p_threads.l_next, kthread_t, kt_plink);
           KASSERT(thread->kt_state == KT_EXITED);
           if (status)
             *status = iterator->p_status;
@@ -298,7 +299,6 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
   }
 }
 
-
 /*
  * Cancel all threads, join with them, and exit from the current
  * thread.
@@ -308,16 +308,16 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
 void do_exit(int status) {
   kthread_t *iterator;
   list_iterate_begin(&curproc->p_threads, iterator, kthread_t, kt_plink) {
-    kthread_cancel(iterator, (void *) status);
+    kthread_cancel(iterator, (void *)status);
   }
   list_iterate_end();
 #ifdef __MTP__
   list_iterate_begin(&curproc->p_threads, iterator, kthread_t, kt_plink) {
-    kthread_join(iterator, (void *) status);
+    kthread_join(iterator, (void *)status);
   }
   list_iterate_end();
 #endif
-  kthread_exit((void *) status);
+  kthread_exit((void *)status);
 }
 
 size_t proc_info(const void *arg, char *buf, size_t osize) {

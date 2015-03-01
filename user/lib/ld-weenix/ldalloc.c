@@ -12,11 +12,9 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
-
 static unsigned long start;
 static unsigned long pos;
 static unsigned long amount;
-
 
 /* This function initializes the simple memory allocator.  We basically
  * allocate a specified number of pages to use as scratch memory for
@@ -27,39 +25,36 @@ static unsigned long amount;
  * All this function does is mmap the specified number of pages of
  * /dev/zero to provide the memory for our little memory-wading-pool. */
 
-void _ldainit(unsigned long pagesize, unsigned long pages)
-{
-        amount = pagesize * pages;
-        pos = 0;
+void _ldainit(unsigned long pagesize, unsigned long pages) {
+  amount = pagesize * pages;
+  pos = 0;
 
-        start = (unsigned long)mmap(NULL, amount, PROT_READ | PROT_WRITE,
-                                    MAP_PRIVATE | MAP_ANON, -1, 0);
-        if (start == (unsigned long) MAP_FAILED) {
-                fprintf(stderr, "ld-weenix: panic - unable to map /dev/zero\n");
-                exit(1);
-        }
+  start = (unsigned long)mmap(NULL, amount, PROT_READ | PROT_WRITE,
+                              MAP_PRIVATE | MAP_ANON, -1, 0);
+  if (start == (unsigned long)MAP_FAILED) {
+    fprintf(stderr, "ld-weenix: panic - unable to map /dev/zero\n");
+    exit(1);
+  }
 }
-
 
 /* This function allocates a block of memory of the specified size from
  * our memory pool.  The memory is word-aligned, and cannot be freed. */
 
-void *_ldalloc(unsigned long size)
-{
-        unsigned long   next;
+void *_ldalloc(unsigned long size) {
+  unsigned long next;
 
-        if (size & 3) {
-                size = (size&~3) + 4;
-        }
+  if (size & 3) {
+    size = (size & ~3) + 4;
+  }
 
-        if (pos + size > amount) {
-                fprintf(stderr, "ld.so.1: panic - unable to allocate %lu bytes (_ldalloc)\n", size);
-                exit(1);
-        }
+  if (pos + size > amount) {
+    fprintf(stderr,
+            "ld.so.1: panic - unable to allocate %lu bytes (_ldalloc)\n", size);
+    exit(1);
+  }
 
-        next = start + pos;
-        pos += size;
+  next = start + pos;
+  pos += size;
 
-        return (void *)next;
+  return (void *)next;
 }
-

@@ -2,22 +2,22 @@
 
 #include "sys/types.h"
 
-#define inline __attribute__ ((always_inline,used))
+#define inline __attribute__((always_inline, used))
 #define unlikely(x) __builtin_expect((x), 0)
 #define likely(x) __builtin_expect((x), 1)
 
-#define offsetof(type, member) \
-        ((uint32_t)((char*)&((type *)(0))->member - (char*)0))
+#define offsetof(type, member)                                                 \
+  ((uint32_t)((char *)&((type *)(0))->member - (char *)0))
 
 #ifndef MIN
-#define MIN(a,b)  ((a) < (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 #ifndef MAX
-#define MAX(a,b)  ((a) > (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
 #endif
 
-#define CONTAINER_OF(obj, type, member) \
-        ((type *)((char *)(obj) - offsetof(type, member)))
+#define CONTAINER_OF(obj, type, member)                                        \
+  ((type *)((char *)(obj) - offsetof(type, member)))
 
 /* This truly atrocious macro hack taken from the wikipedia article on the C
  * preprocessor, use to "quote" the value (or name) of another macro:

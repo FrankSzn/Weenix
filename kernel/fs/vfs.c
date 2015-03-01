@@ -53,11 +53,9 @@ list_t mounted_fs_list;
  *
  * This function is not meant to mount the root file system.
  */
-int
-vfs_mount(struct vnode *mtpt, fs_t *fs)
-{
-        NOT_YET_IMPLEMENTED("MOUNTING: vfs_mount");
-        return -EINVAL;
+int vfs_mount(struct vnode *mtpt, fs_t *fs) {
+  NOT_YET_IMPLEMENTED("MOUNTING: vfs_mount");
+  return -EINVAL;
 }
 
 /*
@@ -73,11 +71,9 @@ vfs_mount(struct vnode *mtpt, fs_t *fs)
  * try to call this function on the root file system (this function is not meant
  * to unmount the root file system).
  */
-int
-vfs_umount(fs_t *fs)
-{
-        NOT_YET_IMPLEMENTED("MOUNTING: vfs_umount");
-        return -EINVAL;
+int vfs_umount(fs_t *fs) {
+  NOT_YET_IMPLEMENTED("MOUNTING: vfs_umount");
+  return -EINVAL;
 }
 #endif /* __MOUNTING__ */
 
@@ -97,113 +93,106 @@ vfs_umount(fs_t *fs)
  *
  *             - set vfs_root_vn appropriately
  */
-static __attribute__((unused)) void
-vfs_init(void)
-{
-        int err;
-        fs_t *fs;
+static __attribute__((unused)) void vfs_init(void) {
+  int err;
+  fs_t *fs;
 
-        /* mount the root (and only) filesystem: */
-        /*     create and init an fs_t for the fs: */
-        fs = (fs_t *) kmalloc(sizeof(fs_t));
-        KASSERT(fs
-                && "shouldn\'t be running out of memory this early in "
+  /* mount the root (and only) filesystem: */
+  /*     create and init an fs_t for the fs: */
+  fs = (fs_t *)kmalloc(sizeof(fs_t));
+  KASSERT(fs && "shouldn\'t be running out of memory this early in "
                 "the game");
-        memset(fs, 0, sizeof(fs_t));
-        strcpy(fs->fs_type, VFS_ROOTFS_TYPE);
-        if (VFS_ROOTFS_DEV) {
-                strcpy(fs->fs_dev, VFS_ROOTFS_DEV);
-        }
+  memset(fs, 0, sizeof(fs_t));
+  strcpy(fs->fs_type, VFS_ROOTFS_TYPE);
+  if (VFS_ROOTFS_DEV) {
+    strcpy(fs->fs_dev, VFS_ROOTFS_DEV);
+  }
 
-        /*     attempt to find and call appropriate mount routine: */
-        if (0 > (err = mountfunc(fs))) {
-                panic("Failed to mount root fs of type \"%s\" on device "
-                      "\"%s\" with errno of %d\n",
-                      VFS_ROOTFS_TYPE, VFS_ROOTFS_DEV, -err);
-        }
+  /*     attempt to find and call appropriate mount routine: */
+  if (0 > (err = mountfunc(fs))) {
+    panic("Failed to mount root fs of type \"%s\" on device "
+          "\"%s\" with errno of %d\n",
+          VFS_ROOTFS_TYPE, VFS_ROOTFS_DEV, -err);
+  }
 
-        vfs_root_vn = fs->fs_root;
+  vfs_root_vn = fs->fs_root;
 
 #ifdef __MOUNTING__
-        list_init(&mounted_fs_list);
-        fs->fs_mtpt = vfs_root_vn;
+  list_init(&mounted_fs_list);
+  fs->fs_mtpt = vfs_root_vn;
 #endif
 }
 init_func(vfs_init);
 init_depends(vnode_init);
 init_depends(file_init);
 
-int
-vfs_shutdown()
-{
-        /*
-         * - unmount the root filesystem
-         */
-        fs_t *fs;
-        vnode_t *vn;
-        int ret = 0;
+int vfs_shutdown() {
+  /*
+   * - unmount the root filesystem
+   */
+  fs_t *fs;
+  vnode_t *vn;
+  int ret = 0;
 
-        KASSERT(vfs_root_vn);
+  KASSERT(vfs_root_vn);
 
 #ifdef __MOUNTING__
-        fs_t *mtfs;
-        list_iterate_begin(&mounted_fs_list, mtfs, fs_t, fs_link) {
-                int ret = vfs_umount(mtfs);
-                KASSERT(0 <= ret);
-        } list_iterate_end();
+  fs_t *mtfs;
+  list_iterate_begin(&mounted_fs_list, mtfs, fs_t, fs_link) {
+    int ret = vfs_umount(mtfs);
+    KASSERT(0 <= ret);
+  }
+  list_iterate_end();
 #endif
 
+  vn = vfs_root_vn;
+  fs = vn->vn_fs;
 
-        vn = vfs_root_vn;
-        fs = vn->vn_fs;
+  /* 'vfs_shutdown' is called after there are no processes other than
+   * idleproc running. idleproc does not have a p_cwd. Thus, there
+   * should be no live vnodes */
 
-        /* 'vfs_shutdown' is called after there are no processes other than
-         * idleproc running. idleproc does not have a p_cwd. Thus, there
-         * should be no live vnodes */
+  if (0 > vfs_is_in_use(fs)) {
+    panic("vfs_shutdown: found active vnodes in root "
+          "filesystem!!! This shouldn't happen!!\n");
+  }
 
-        if (0 > vfs_is_in_use(fs)) {
-                panic("vfs_shutdown: found active vnodes in root "
-                      "filesystem!!! This shouldn't happen!!\n");
-        }
+  if (vn->vn_fs->fs_op->umount) {
+    ret = vn->vn_fs->fs_op->umount(fs);
+  } else {
+    vput(vn);
+  }
 
-        if (vn->vn_fs->fs_op->umount) {
-                ret = vn->vn_fs->fs_op->umount(fs);
-        } else {
-                vput(vn);
-        }
+  KASSERT((!vnode_inuse(fs)) &&
+          "should have been taken care of by unmount entry point "
+          "or by the above vput of the root vnode");
 
-        KASSERT((!vnode_inuse(fs))
-                && "should have been taken care of by unmount entry point "
-                "or by the above vput of the root vnode");
+  vfs_root_vn = NULL; /* not /really/ necessary... */
 
-        vfs_root_vn = NULL; /* not /really/ necessary... */
+  kfree(fs);
 
-        kfree(fs);
-
-        return ret;
+  return ret;
 }
 
 /*
  * Given an fs_t, we search through the list of known file systems
  * and call the proper mount function.
  */
-int
-mountfunc(fs_t *fs)
-{
-        static const struct {
-                char *fstype;
-                int (*mountfunc)(fs_t *);
-        } types[] = {
+int mountfunc(fs_t *fs) {
+  static const struct {
+    char *fstype;
+    int (*mountfunc)(fs_t *);
+  } types[] = {
 #ifdef __S5FS__
-                { "s5fs", s5fs_mount },
+        {"s5fs", s5fs_mount},
 #endif
-                { "ramfs", ramfs_mount },
-        };
-        unsigned i;
+        {"ramfs", ramfs_mount},
+    };
+  unsigned i;
 
-        for (i = 0; i < sizeof(types) / sizeof(types[0]); i++)
-                if (strcmp(fs->fs_type, types[i].fstype) == 0)
-                        return types[i].mountfunc(fs);
+  for (i = 0; i < sizeof(types) / sizeof(types[0]); i++)
+    if (strcmp(fs->fs_type, types[i].fstype) == 0)
+      return types[i].mountfunc(fs);
 
-        return -EINVAL;
+  return -EINVAL;
 }

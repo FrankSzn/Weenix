@@ -127,7 +127,7 @@ static void *bootstrap(int arg1, void *arg2) {
   curproc = proc_create("idle");
   curthr = kthread_create(curproc, idleproc_run, arg1, arg2);
   curthr->kt_state = KT_RUN;
-  //sched_make_runnable(curthr);
+  // sched_make_runnable(curthr);
   dbg(DBG_INIT, "switching to idle\n");
   context_make_active(&curthr->kt_ctx);
 
@@ -262,7 +262,7 @@ static void *initproc_run(int arg1, void *arg2) {
   for (int i = 3; i >= 0; --i) {
     do_waitpid(pids[i], 0, NULL);
   }
-  
+
   dbg(DBG_INIT, "Testing waitpid edge cases\n");
   // Wait with no child processes
   do_waitpid(-1, 0, NULL);
@@ -270,7 +270,6 @@ static void *initproc_run(int arg1, void *arg2) {
 
   return NULL;
 }
-
 
 /**
  * Clears all interrupts and halts, meaning that we will never run

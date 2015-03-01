@@ -21,13 +21,10 @@
  *
  * Note: returns with the vnode refcount on *result incremented.
  */
-int
-lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
-{
-        NOT_YET_IMPLEMENTED("VFS: lookup");
-        return 0;
+int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
+  NOT_YET_IMPLEMENTED("VFS: lookup");
+  return 0;
 }
-
 
 /* When successful this function returns data in the following "out"-arguments:
  *  o res_vnode: the vnode of the parent directory of "name"
@@ -47,12 +44,10 @@ lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result)
  * Note: A successful call to this causes vnode refcount on *res_vnode to
  * be incremented.
  */
-int
-dir_namev(const char *pathname, size_t *namelen, const char **name,
-          vnode_t *base, vnode_t **res_vnode)
-{
-        NOT_YET_IMPLEMENTED("VFS: dir_namev");
-        return 0;
+int dir_namev(const char *pathname, size_t *namelen, const char **name,
+              vnode_t *base, vnode_t **res_vnode) {
+  NOT_YET_IMPLEMENTED("VFS: dir_namev");
+  return 0;
 }
 
 /* This returns in res_vnode the vnode requested by the other parameters.
@@ -63,11 +58,10 @@ dir_namev(const char *pathname, size_t *namelen, const char **name,
  *
  * Note: Increments vnode refcount on *res_vnode.
  */
-int
-open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
-{
-        NOT_YET_IMPLEMENTED("VFS: open_namev");
-        return 0;
+int open_namev(const char *pathname, int flag, vnode_t **res_vnode,
+               vnode_t *base) {
+  NOT_YET_IMPLEMENTED("VFS: open_namev");
+  return 0;
 }
 
 #ifdef __GETCWD__
@@ -79,13 +73,10 @@ open_namev(const char *pathname, int flag, vnode_t **res_vnode, vnode_t *base)
  *
  * Files can be uniquely identified within a file system by their
  * inode numbers. */
-int
-lookup_name(vnode_t *dir, vnode_t *entry, char *buf, size_t size)
-{
-        NOT_YET_IMPLEMENTED("GETCWD: lookup_name");
-        return -ENOENT;
+int lookup_name(vnode_t *dir, vnode_t *entry, char *buf, size_t size) {
+  NOT_YET_IMPLEMENTED("GETCWD: lookup_name");
+  return -ENOENT;
 }
-
 
 /* Used to find the absolute path of the directory 'dir'. Since
  * directories cannot have more than one link there is always
@@ -95,11 +86,9 @@ lookup_name(vnode_t *dir, vnode_t *entry, char *buf, size_t size)
  * possible errors. Even if an error code is returned the buffer
  * will be filled with a valid string which has some partial
  * information about the wanted path. */
-ssize_t
-lookup_dirpath(vnode_t *dir, char *buf, size_t osize)
-{
-        NOT_YET_IMPLEMENTED("GETCWD: lookup_dirpath");
+ssize_t lookup_dirpath(vnode_t *dir, char *buf, size_t osize) {
+  NOT_YET_IMPLEMENTED("GETCWD: lookup_dirpath");
 
-        return -ENOENT;
+  return -ENOENT;
 }
 #endif /* __GETCWD__ */

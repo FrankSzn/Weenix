@@ -7,22 +7,24 @@
  * use the slab allocator functions in mm/alloc.h unless
  * they require page-aligned buffers. */
 
-#define PAGE_SHIFT         12
-#define PAGE_SIZE          ((uint32_t)(1UL<<PAGE_SHIFT))
-#define PAGE_MASK          (0xffffffff<<PAGE_SHIFT)
+#define PAGE_SHIFT 12
+#define PAGE_SIZE ((uint32_t)(1UL << PAGE_SHIFT))
+#define PAGE_MASK (0xffffffff << PAGE_SHIFT)
 
-#define PAGE_ALIGN_DOWN(x) ((void*)(((uintptr_t)(x))&PAGE_MASK))
-#define PAGE_ALIGN_UP(x)   ((void*)(((((uintptr_t)(x))-1)&PAGE_MASK)+PAGE_SIZE))
-#define PAGE_OFFSET(x)     ((uintptr_t)(x)&~PAGE_MASK)
+#define PAGE_ALIGN_DOWN(x) ((void *)(((uintptr_t)(x)) & PAGE_MASK))
+#define PAGE_ALIGN_UP(x)                                                       \
+  ((void *)(((((uintptr_t)(x)) - 1) & PAGE_MASK) + PAGE_SIZE))
+#define PAGE_OFFSET(x) ((uintptr_t)(x) & ~PAGE_MASK)
 
 #define PN_TO_ADDR(x) ((void *)(((uint32_t)(x)) << PAGE_SHIFT))
 #define ADDR_TO_PN(x) (((uint32_t)(x)) >> PAGE_SHIFT)
 
 #define PAGE_ALIGNED(x) (0 == ((uintptr_t)(x)) % PAGE_SIZE)
 
-#define PAGE_NSIZES  8
+#define PAGE_NSIZES 8
 
-#define PAGE_SAME(addr1, addr2) (PAGE_ALIGN_DOWN(addr1) == PAGE_ALIGN_DOWN(addr2))
+#define PAGE_SAME(addr1, addr2)                                                \
+  (PAGE_ALIGN_DOWN(addr1) == PAGE_ALIGN_DOWN(addr2))
 
 /* Adds the virtual pages [start,end) to those that
  * may be allocated by the page allocator, this should
@@ -37,7 +39,7 @@ void page_add_range(uintptr_t start, uintptr_t end);
  * page_alloc. If the system is out of memory page_alloc
  * will return NULL. */
 void *page_alloc(void);
-void  page_free(void *addr);
+void page_free(void *addr);
 
 /* These functions allocate and free a page-aligned
  * block of memory which are npages pages in length.
@@ -46,7 +48,7 @@ void  page_free(void *addr);
  * npages set to the same as it was when the block was
  * allocated */
 void *page_alloc_n(uint32_t npages);
-void  page_free_n(void *start, uint32_t npages);
+void page_free_n(void *start, uint32_t npages);
 
 /* Returns the number of free pages remaining in the
  * system. Note that calls to page_alloc_n(npages) may

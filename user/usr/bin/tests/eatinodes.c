@@ -37,7 +37,7 @@ static void eatinodes(void) {
 
   for (i = 0; !err; ++i) {
     sprintf(fname, "test-%d", i);
-    fd = open(fname, O_CREAT|O_TRUNC|O_WRONLY, 0666);
+    fd = open(fname, O_CREAT | O_TRUNC | O_WRONLY, 0666);
     if (fd < 0) {
       printf("Could not open file %d: %s\n", i, strerror(errno));
       break;
@@ -47,7 +47,7 @@ static void eatinodes(void) {
       printf("Could not close fd %d: %s\n", fd, strerror(errno));
       break;
     }
-    printf("Created %d files\n",i);
+    printf("Created %d files\n", i);
   }
   int j;
   printf("Cleaning up...\n");
@@ -69,11 +69,10 @@ static void eatinodes_end(void) {
 }
 
 int main(int argc, char **argv) {
-  
+
   eatinodes_start();
   eatinodes();
   eatinodes_end();
 
   return 0;
-
 }

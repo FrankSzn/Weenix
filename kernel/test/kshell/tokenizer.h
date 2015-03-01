@@ -5,19 +5,19 @@
 #include "test/kshell/kshell.h"
 
 typedef enum kshell_token_type {
-        KTT_WORD,
-        KTT_REDIRECT_IN,         /* '<' */
-        KTT_REDIRECT_OUT,        /* '>' */
-        KTT_REDIRECT_OUT_APPEND, /* '>>' */
-        KTT_EOL,
+  KTT_WORD,
+  KTT_REDIRECT_IN,         /* '<' */
+  KTT_REDIRECT_OUT,        /* '>' */
+  KTT_REDIRECT_OUT_APPEND, /* '>>' */
+  KTT_EOL,
 
-        KTT_MAX /* Number of token types */
+  KTT_MAX /* Number of token types */
 } kshell_token_type_t;
 
 typedef struct kshell_token {
-        kshell_token_type_t kt_type;
-        char *kt_text;
-        size_t kt_textlen;
+  kshell_token_type_t kt_type;
+  char *kt_text;
+  size_t kt_textlen;
 } kshell_token_t;
 
 /**

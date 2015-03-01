@@ -2,38 +2,38 @@
 
 #include "types.h"
 
-#define FMODE_READ    1
-#define FMODE_WRITE   2
-#define FMODE_APPEND  4
+#define FMODE_READ 1
+#define FMODE_WRITE 2
+#define FMODE_APPEND 4
 
 struct vnode;
 
 typedef struct file {
-        /*
-         * The current position in the file. Can be modified by system calls
-         * like lseek(2), read(2), and write(2) (and possibly others) as
-         * described in the man pages of those calls.
-         */
-        off_t                   f_pos;
+  /*
+   * The current position in the file. Can be modified by system calls
+   * like lseek(2), read(2), and write(2) (and possibly others) as
+   * described in the man pages of those calls.
+   */
+  off_t f_pos;
 
-        /*
-         * The mode in which this file was opened. This is a mask of the flags
-         * FMODE_READ, FMODE_WRITE, and FMODE_APPEND. It is set when the file
-         * is first opened, and use to restrict the operations that can be
-         * performed on the underlying vnode.
-         */
-        int                     f_mode;
+  /*
+   * The mode in which this file was opened. This is a mask of the flags
+   * FMODE_READ, FMODE_WRITE, and FMODE_APPEND. It is set when the file
+   * is first opened, and use to restrict the operations that can be
+   * performed on the underlying vnode.
+   */
+  int f_mode;
 
-        /*
-         * The number of references to this struct. This is nearly the same as
-         * the vnode's vn_refcount member.
-         */
-        int                     f_refcount;
+  /*
+   * The number of references to this struct. This is nearly the same as
+   * the vnode's vn_refcount member.
+   */
+  int f_refcount;
 
-        /*
-         * The vnode which corresponds to this file.
-         */
-        struct vnode            *f_vnode;
+  /*
+   * The vnode which corresponds to this file.
+   */
+  struct vnode *f_vnode;
 } file_t;
 
 /*

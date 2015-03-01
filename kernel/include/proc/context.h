@@ -11,14 +11,14 @@
 typedef void *(*context_func_t)(int, void *);
 
 typedef struct context {
-        uint32_t   c_eip; /* instruction pointer (EIP) */
-        uint32_t   c_esp; /* stack pointer (ESP) */
-        uint32_t   c_ebp; /* frame pointer (EBP) */
+  uint32_t c_eip; /* instruction pointer (EIP) */
+  uint32_t c_esp; /* stack pointer (ESP) */
+  uint32_t c_ebp; /* frame pointer (EBP) */
 
-        pagedir_t *c_pdptr; /* pointer to the page directory for this proc */
+  pagedir_t *c_pdptr; /* pointer to the page directory for this proc */
 
-        uintptr_t  c_kstack;
-        size_t     c_kstacksz;
+  uintptr_t c_kstack;
+  size_t c_kstacksz;
 } context_t;
 
 /**

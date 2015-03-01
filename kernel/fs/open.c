@@ -19,19 +19,18 @@
 #include "util/debug.h"
 
 /* find empty index in p->p_files[] */
-int
-get_empty_fd(proc_t *p)
-{
-        int fd;
+int get_empty_fd(proc_t *p) {
+  int fd;
 
-        for (fd = 0; fd < NFILES; fd++) {
-                if (!p->p_files[fd])
-                        return fd;
-        }
+  for (fd = 0; fd < NFILES; fd++) {
+    if (!p->p_files[fd])
+      return fd;
+  }
 
-        dbg(DBG_ERROR | DBG_VFS, "ERROR: get_empty_fd: out of file descriptors "
-            "for pid %d\n", curproc->p_pid);
-        return -EMFILE;
+  dbg(DBG_ERROR | DBG_VFS, "ERROR: get_empty_fd: out of file descriptors "
+                           "for pid %d\n",
+      curproc->p_pid);
+  return -EMFILE;
 }
 
 /*
@@ -70,9 +69,7 @@ get_empty_fd(proc_t *p)
  *        exists.
  */
 
-int
-do_open(const char *filename, int oflags)
-{
-        NOT_YET_IMPLEMENTED("VFS: do_open");
-        return -1;
+int do_open(const char *filename, int oflags) {
+  NOT_YET_IMPLEMENTED("VFS: do_open");
+  return -1;
 }

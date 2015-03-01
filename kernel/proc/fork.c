@@ -31,17 +31,16 @@
  * regs: registers the new thread should have on execution
  * kstack: location of the new thread's kernel stack
  * Returns the new stack pointer on success. */
-static uint32_t
-fork_setup_stack(const regs_t *regs, void *kstack)
-{
-        /* Pointer argument and dummy return address, and userland dummy return
-         * address */
-        uint32_t esp = ((uint32_t) kstack) + DEFAULT_STACK_SIZE - (sizeof(regs_t) + 12);
-        *(void **)(esp + 4) = (void *)(esp + 8); /* Set the argument to point to location of struct on stack */
-        memcpy((void *)(esp + 8), regs, sizeof(regs_t)); /* Copy over struct */
-        return esp;
+static uint32_t fork_setup_stack(const regs_t *regs, void *kstack) {
+  /* Pointer argument and dummy return address, and userland dummy return
+   * address */
+  uint32_t esp =
+      ((uint32_t)kstack) + DEFAULT_STACK_SIZE - (sizeof(regs_t) + 12);
+  *(void **)(esp + 4) = (void *)(esp + 8); /* Set the argument to point to
+                                              location of struct on stack */
+  memcpy((void *)(esp + 8), regs, sizeof(regs_t)); /* Copy over struct */
+  return esp;
 }
-
 
 /*
  * The implementation of fork(2). Once this works,
@@ -49,9 +48,7 @@ fork_setup_stack(const regs_t *regs, void *kstack)
  * entirety of Weenix has been leading up to.
  * Go forth and conquer.
  */
-int
-do_fork(struct regs *regs)
-{
-        NOT_YET_IMPLEMENTED("VM: do_fork");
-        return 0;
+int do_fork(struct regs *regs) {
+  NOT_YET_IMPLEMENTED("VM: do_fork");
+  return 0;
 }

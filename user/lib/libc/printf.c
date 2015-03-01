@@ -57,74 +57,66 @@
 #include "stdio.h"
 #include "unistd.h"
 
-int printf(const char *fmt, ...)
-{
-        va_list args;
-        int i;
+int printf(const char *fmt, ...) {
+  va_list args;
+  int i;
 
-        va_start(args, fmt);
-        i = vprintf(fmt, args);
-        va_end(args);
-        return i;
+  va_start(args, fmt);
+  i = vprintf(fmt, args);
+  va_end(args);
+  return i;
 }
 
-int fprintf(FILE *stream, const char *fmt, ...)
-{
-        va_list args;
-        int i;
+int fprintf(FILE *stream, const char *fmt, ...) {
+  va_list args;
+  int i;
 
-        va_start(args, fmt);
-        i = vfprintf(stream, fmt, args);
-        va_end(args);
-        return i;
+  va_start(args, fmt);
+  i = vfprintf(stream, fmt, args);
+  va_end(args);
+  return i;
 }
 
-int sprintf(char *buf, const char *fmt, ...)
-{
-        va_list args;
-        int i;
+int sprintf(char *buf, const char *fmt, ...) {
+  va_list args;
+  int i;
 
-        va_start(args, fmt);
-        i = vsprintf(buf, fmt, args);
-        va_end(args);
-        return i;
+  va_start(args, fmt);
+  i = vsprintf(buf, fmt, args);
+  va_end(args);
+  return i;
 }
 
-int snprintf(char *buf, size_t size, const char *fmt, ...)
-{
-        va_list args;
-        int i;
+int snprintf(char *buf, size_t size, const char *fmt, ...) {
+  va_list args;
+  int i;
 
-        va_start(args, fmt);
-        i = vsnprintf(buf, size, fmt, args);
-        va_end(args);
-        return i;
+  va_start(args, fmt);
+  i = vsnprintf(buf, size, fmt, args);
+  va_end(args);
+  return i;
 }
 
-int vprintf(const char *fmt, va_list args)
-{
-        return vfprintf(stdout, fmt, args);
+int vprintf(const char *fmt, va_list args) {
+  return vfprintf(stdout, fmt, args);
 }
 
 #define __LIBC_PRINTF_BUFSIZE 1024
-int vfprintf(FILE *stream, const char *fmt, va_list args)
-{
-        /* I'm really lazy */
-        char buf[__LIBC_PRINTF_BUFSIZE];
-        int ret = vsnprintf(buf, __LIBC_PRINTF_BUFSIZE, fmt, args);
-        if (ret > 0) {
-                write(*stream, buf, ret);
-        }
-        return ret;
+int vfprintf(FILE *stream, const char *fmt, va_list args) {
+  /* I'm really lazy */
+  char buf[__LIBC_PRINTF_BUFSIZE];
+  int ret = vsnprintf(buf, __LIBC_PRINTF_BUFSIZE, fmt, args);
+  if (ret > 0) {
+    write(*stream, buf, ret);
+  }
+  return ret;
 }
 
-int vsprintf(char *buf, const char *fmt, va_list args)
-{
-        return vsnprintf(buf, 0xffffffffUL, fmt, args);
+int vsprintf(char *buf, const char *fmt, va_list args) {
+  return vsnprintf(buf, 0xffffffffUL, fmt, args);
 }
 
-int fflush(FILE *stream)
-{
-        /* no-op */
-        return 0;
+int fflush(FILE *stream) {
+  /* no-op */
+  return 0;
 }

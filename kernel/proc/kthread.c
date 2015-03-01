@@ -91,8 +91,8 @@ void kthread_destroy(kthread_t *t) {
   KASSERT(t->kt_state == KT_EXITED);
   KASSERT(!list_link_is_linked(&t->kt_qlink));
   free_stack(t->kt_kstack);
-  //if (list_link_is_linked(&t->kt_plink))
-    //list_remove(&t->kt_plink);
+  // if (list_link_is_linked(&t->kt_plink))
+  // list_remove(&t->kt_plink);
   slab_obj_free(kthread_allocator, t);
 }
 

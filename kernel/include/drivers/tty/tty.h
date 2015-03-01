@@ -8,10 +8,10 @@ struct tty_driver;
 struct tty_ldisc;
 
 typedef struct tty_device {
-        struct tty_driver *tty_driver;
-        struct tty_ldisc  *tty_ldisc;
-        int                tty_id;
-        bytedev_t          tty_cdev;
+  struct tty_driver *tty_driver;
+  struct tty_ldisc *tty_ldisc;
+  int tty_id;
+  bytedev_t tty_cdev;
 } tty_device_t;
 
 /**

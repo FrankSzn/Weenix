@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
       if (c < 32 || c > 126) {
         printf(".");
       } else {
-        printf("%c",c);
+        printf("%c", c);
       }
     }
     printf("|\n");

@@ -22,33 +22,16 @@ static int null_write(bytedev_t *dev, int offset, const void *buf, int count);
 static int zero_read(bytedev_t *dev, int offset, void *buf, int count);
 static int zero_mmap(vnode_t *file, vmarea_t *vma, mmobj_t **ret);
 
-bytedev_ops_t null_dev_ops = {
-        null_read,
-        null_write,
-        NULL,
-        NULL,
-        NULL,
-        NULL
-};
+bytedev_ops_t null_dev_ops = {null_read, null_write, NULL, NULL, NULL, NULL};
 
-bytedev_ops_t zero_dev_ops = {
-        zero_read,
-        null_write,
-        zero_mmap,
-        NULL,
-        NULL,
-        NULL
-};
+bytedev_ops_t zero_dev_ops = {zero_read, null_write, zero_mmap,
+                              NULL,      NULL,       NULL};
 
 /*
  * The byte device code needs to know about these mem devices, so create
  * bytedev_t's for null and zero, fill them in, and register them.
  */
-void
-memdevs_init()
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: memdevs_init");
-}
+void memdevs_init() { NOT_YET_IMPLEMENTED("DRIVERS: memdevs_init"); }
 
 /**
  * Reads a given number of bytes from the null device into a
@@ -60,11 +43,9 @@ memdevs_init()
  * @param count the maximum number of bytes to read
  * @return the number of bytes read, which should be 0
  */
-static int
-null_read(bytedev_t *dev, int offset, void *buf, int count)
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: null_read");
-        return -ENOMEM;
+static int null_read(bytedev_t *dev, int offset, void *buf, int count) {
+  NOT_YET_IMPLEMENTED("DRIVERS: null_read");
+  return -ENOMEM;
 }
 
 /**
@@ -78,11 +59,9 @@ null_read(bytedev_t *dev, int offset, void *buf, int count)
  * @param count the maximum number of bytes to write
  * @return the number of bytes written, which should be count
  */
-static int
-null_write(bytedev_t *dev, int offset, const void *buf, int count)
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: null_write");
-        return -ENOMEM;
+static int null_write(bytedev_t *dev, int offset, const void *buf, int count) {
+  NOT_YET_IMPLEMENTED("DRIVERS: null_write");
+  return -ENOMEM;
 }
 
 /**
@@ -96,18 +75,15 @@ null_write(bytedev_t *dev, int offset, const void *buf, int count)
  * @return the number of bytes read. Should always read the maximum
  * number of bytes
  */
-static int
-zero_read(bytedev_t *dev, int offset, void *buf, int count)
-{
-        NOT_YET_IMPLEMENTED("DRIVERS: zero_read");
-        return 0;
+static int zero_read(bytedev_t *dev, int offset, void *buf, int count) {
+  NOT_YET_IMPLEMENTED("DRIVERS: zero_read");
+  return 0;
 }
 
-/* Don't worry about these until VM. Once you're there, they shouldn't be hard. */
+/* Don't worry about these until VM. Once you're there, they shouldn't be hard.
+ */
 
-static int
-zero_mmap(vnode_t *file, vmarea_t *vma, mmobj_t **ret)
-{
-        NOT_YET_IMPLEMENTED("VM: zero_mmap");
-        return -1;
+static int zero_mmap(vnode_t *file, vmarea_t *vma, mmobj_t **ret) {
+  NOT_YET_IMPLEMENTED("VM: zero_mmap");
+  return -1;
 }

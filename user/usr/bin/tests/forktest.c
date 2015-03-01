@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <stdlib.h>
-#include <stdio.h> 
+#include <stdio.h>
 #include <sys/types.h>
 
 int main(int argc, char *argv[], char *envp[]) {
