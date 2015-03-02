@@ -14,8 +14,8 @@
 
 /* helpful macros */
 #define EOFC '\x4'
-#define TTY_BUF_SIZE 128
 #define ldisc_to_ntty(ldisc) CONTAINER_OF(ldisc, n_tty_t, ntty_ldisc)
+#define TTY_BUF_SIZE_T unsigned char
 
 static void n_tty_attach(tty_ldisc_t *ldisc, tty_device_t *tty);
 static void n_tty_detach(tty_ldisc_t *ldisc, tty_device_t *tty);
@@ -30,15 +30,26 @@ static tty_ldisc_ops_t n_tty_ops = {.attach = n_tty_attach,
                                     .process_char = n_tty_process_char};
 
 struct n_tty {
-  kmutex_t ntty_rlock;
-  ktqueue_t ntty_rwaitq;
-  char *ntty_inbuf;
-  int ntty_rhead;
-  int ntty_rawtail;
-  int ntty_ckdtail;
+  kmutex_t rlock;
+  ktqueue_t rwaitq;
+  char *inbuf;
+  TTY_BUF_SIZE_T rhead; // Raw head
+  TTY_BUF_SIZE_T rawtail; // Raw tail
+  TTY_BUF_SIZE_T ckdtail; // First uncooked character
 
   tty_ldisc_t ntty_ldisc;
 };
+
+// Helper access functions
+char *get_rhead(struct n_tty *nt) {
+  return nt->inbuf + nt->rhead;
+}
+char *get_rawtail(struct n_tty *nt) {
+  return nt->inbuf + nt->rawtail;
+}
+char *get_ckdtail(struct n_tty *nt) {
+  return nt->inbuf + nt->ckdtail;
+}
 
 tty_ldisc_t *n_tty_create() {
   n_tty_t *ntty = (n_tty_t *)kmalloc(sizeof(n_tty_t));
@@ -58,7 +69,16 @@ void n_tty_destroy(tty_ldisc_t *ldisc) {
  * you will need later, and set the tty_ldisc field of the tty.
  */
 void n_tty_attach(tty_ldisc_t *ldisc, tty_device_t *tty) {
-  NOT_YET_IMPLEMENTED("DRIVERS: n_tty_attach");
+  n_tty_t *nt = ldisc_to_ntty(ldisc);
+  kmutex_init(&nt->rlock);
+  sched_queue_init(&nt->rwaitq);
+
+  nt->inbuf = kmalloc(sizeof(TTY_BUF_SIZE_T));
+  nt->rhead = 0;
+  nt->rawtail = 0;
+  nt->ckdtail = 0;
+
+  tty->tty_ldisc = ldisc;
 }
 
 /*
@@ -66,12 +86,15 @@ void n_tty_attach(tty_ldisc_t *ldisc, tty_device_t *tty) {
  * field of the tty.
  */
 void n_tty_detach(tty_ldisc_t *ldisc, tty_device_t *tty) {
-  NOT_YET_IMPLEMENTED("DRIVERS: n_tty_detach");
+  n_tty_t *nt = ldisc_to_ntty(ldisc);
+  kfree(nt->inbuf);
+  tty->tty_ldisc = NULL;
 }
 
 /*
- * Read a maximum of len bytes from the line discipline into buf. If
- * the buffer is empty, sleep until some characters appear. This might
+ * Read a maximum of len bytes from the line discipline into buf. 
+ *
+ * If the buffer is empty, sleep until some characters appear. This might
  * be a long wait, so it's best to let the thread be cancellable.
  *
  * Then, read from the head of the buffer up to the tail, stopping at
@@ -88,8 +111,28 @@ void n_tty_detach(tty_ldisc_t *ldisc, tty_device_t *tty) {
  * properly.
  */
 int n_tty_read(tty_ldisc_t *ldisc, void *buf, int len) {
-  NOT_YET_IMPLEMENTED("DRIVERS: n_tty_read");
-  return 0;
+
+  KASSERT(len >= 0);
+  n_tty_t *nt = ldisc_to_ntty(ldisc);
+  kmutex_lock(&nt->rlock);
+
+  if (nt->rhead == nt->ckdtail)
+    sched_cancellable_sleep_on(&nt->rwaitq);
+
+  int read = 0;
+  char *buff = buf;
+  for (; nt->rhead != nt->ckdtail && len; ++(nt->rhead)) {
+    buff[read] = *get_rhead(nt);
+    --len;
+    ++read;
+    if (buff[read-1] == '\n' || 
+        buff[read-1] == '\r' || 
+        buff[read-1] == 0x04) 
+      break;
+  }
+   
+  kmutex_unlock(&nt->rlock);
+  return read;
 }
 
 /*
@@ -106,8 +149,30 @@ int n_tty_read(tty_ldisc_t *ldisc, void *buf, int len) {
  * just the character to be echoed.
  */
 const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
-  NOT_YET_IMPLEMENTED("DRIVERS: n_tty_receive_char");
-  return NULL;
+  n_tty_t *nt = ldisc_to_ntty(ldisc);
+  // TODO: lock necessary?
+  kmutex_lock(&nt->rlock);
+  
+  char *out_string = kmalloc(2);
+  KASSERT(out_string);
+  out_string[0] = c;
+  out_string[1] = '\0';
+  
+  if (c == 0x08 || c== 0x7F) { // Backspace
+    if (nt->rawtail != nt->ckdtail) {
+      --nt->rawtail;
+      *get_rawtail(nt) = '\0';
+    }
+    kmutex_unlock(&nt->rlock);
+    return out_string;
+  } else if (nt->rawtail != nt->rhead) {
+    *get_rawtail(nt) = c;
+    ++nt->rawtail;
+    if (c == '\r' || c == '\n') // New line
+      nt->ckdtail = nt->rawtail;
+  }
+  kmutex_unlock(&nt->rlock);
+  return out_string;
 }
 
 /*
@@ -116,7 +181,14 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
  * The only special case is '\r' and '\n'.
  */
 const char *n_tty_process_char(tty_ldisc_t *ldisc, char c) {
-  NOT_YET_IMPLEMENTED("DRIVERS: n_tty_process_char");
-
-  return NULL;
+  char * out_string = kmalloc(2);
+  KASSERT(out_string);
+  
+  // TODO: Handle ctrl-D
+  if (c == '\r' || c == '\n')
+    out_string[0] = '\0';
+  else
+    out_string[0] = c;
+  out_string[1] = '\0';
+  return out_string;
 }

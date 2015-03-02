@@ -268,6 +268,15 @@ static void *initproc_run(int arg1, void *arg2) {
   do_waitpid(-1, 0, NULL);
   do_waitpid(1208312, 0, NULL);
 
+  //kshell_add_command("test1", test1, "tests something");
+  int err = 0;
+  kshell_t *ksh = kshell_create(0);
+  KASSERT(ksh && "kshell_create failed");
+
+  while ((err = kshell_execute_next(ksh)) > 0);
+  KASSERT(!err && "kshell exited with error");
+  kshell_destroy(ksh);
+
   return NULL;
 }
 

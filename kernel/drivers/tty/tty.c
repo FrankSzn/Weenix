@@ -118,8 +118,22 @@ void tty_init() {
  * table for a tty.
  */
 tty_device_t *tty_create(tty_driver_t *driver, int id) {
-  NOT_YET_IMPLEMENTED("DRIVERS: tty_create");
-  return 0;
+  KASSERT(driver);
+  tty_device_t *td = kmalloc(sizeof(tty_device_t));
+  KASSERT(td);
+
+  td->tty_id = id;
+  td->tty_driver = driver;
+  td->tty_ldisc = n_tty_create();
+  KASSERT(td->tty_ldisc);
+
+  td->tty_cdev.cd_id = MKDEVID(TTY_MAJOR, id);
+  list_link_init(&td->tty_cdev.cd_link);
+  // TODO: check these functions
+  td->tty_cdev.cd_ops->write = tty_write;
+  td->tty_cdev.cd_ops->read = tty_read;
+
+  return td;
 }
 
 /*
@@ -136,7 +150,10 @@ tty_device_t *tty_create(tty_driver_t *driver, int id) {
  * tty_echo() function.
  */
 void tty_global_driver_callback(void *arg, char c) {
-  NOT_YET_IMPLEMENTED("DRIVERS: tty_global_driver_callback");
+  tty_device_t *td = arg;
+  const char *out = td->tty_ldisc->ld_ops->receive_char(td->tty_ldisc, c);
+  tty_echo(td->tty_driver, out);
+  kfree((void *)out);
 }
 
 /*
@@ -144,7 +161,8 @@ void tty_global_driver_callback(void *arg, char c) {
  * each character of the string 'out'.
  */
 void tty_echo(tty_driver_t *driver, const char *out) {
-  NOT_YET_IMPLEMENTED("DRIVERS: tty_echo");
+  for (int i = 0; out[i] != '\0'; ++i)
+    driver->ttd_ops->provide_char(driver, out[i]);
 }
 
 /*
@@ -153,9 +171,11 @@ void tty_echo(tty_driver_t *driver, const char *out) {
  * modifying the input buffer.
  */
 int tty_read(bytedev_t *dev, int offset, void *buf, int count) {
-  NOT_YET_IMPLEMENTED("DRIVERS: tty_read");
-
-  return 0;
+  tty_device_t *td = bd_to_tty(dev);
+  void *data = td->tty_driver->ttd_ops->block_io(td->tty_driver);
+  int out = td->tty_ldisc->ld_ops->read(td->tty_ldisc, (char *)buf+offset, count);
+  td->tty_driver->ttd_ops->unblock_io(td->tty_driver, data);
+  return out;
 }
 
 /*
@@ -167,7 +187,16 @@ int tty_read(bytedev_t *dev, int offset, void *buf, int count) {
  * _NOT_ the number of bytes written out to the driver.
  */
 int tty_write(bytedev_t *dev, int offset, const void *buf, int count) {
-  NOT_YET_IMPLEMENTED("DRIVERS: tty_write");
-
-  return 0;
+  tty_device_t *td = bd_to_tty(dev);
+  void *data = td->tty_driver->ttd_ops->block_io(td->tty_driver);
+  int written = 0;
+  for (int i = 0; i < count; ++i) {
+    const char *out = td->tty_ldisc->ld_ops->process_char(td->tty_ldisc, *((char *)buf+offset+i));
+    if (out[0])
+      td->tty_driver->ttd_ops->provide_char(td->tty_driver, out[0]);
+    kfree((void *)out);
+    ++written;
+  }
+  td->tty_driver->ttd_ops->unblock_io(td->tty_driver, data);
+  return written;
 }

@@ -373,6 +373,7 @@ static void ata_intr_wrapper(regs_t *regs) {
 static int ata_read(blockdev_t *bdev, char *data, blocknum_t blocknum,
                     unsigned int count) {
   NOT_YET_IMPLEMENTED("DRIVERS: ata_read");
+
   return -1;
 }
 
@@ -388,8 +389,13 @@ static int ata_read(blockdev_t *bdev, char *data, blocknum_t blocknum,
  */
 static int ata_write(blockdev_t *bdev, const char *data, blocknum_t blocknum,
                      unsigned int count) {
-  NOT_YET_IMPLEMENTED("DRIVERS: ata_write");
-  return -1;
+  int ret = 0;
+  for (int i = 0; i < count * BLOCK_SIZE; i += BLOCK_SIZE) {
+    ret = ata_do_operation(bd_to_ata(bdev), data[i], blocknum, 1);
+    if (!ret)
+      return ret;
+  }
+  return ret;
 }
 
 /**
@@ -483,7 +489,33 @@ static int ata_write(blockdev_t *bdev, const char *data, blocknum_t blocknum,
 static int ata_do_operation(ata_disk_t *adisk, char *data, blocknum_t blocknum,
                             int write) {
   NOT_YET_IMPLEMENTED("DRIVERS: ata_do_operation");
-  return -1;
+
+  kmutex_lock(&adisk->ata_mutex);
+  int old_ipl = intr_getipl();
+  intr_setipl(INTR_DISK_SECONDARY);
+  dma_load(adisk->ata_channel, data, BLOCK_SIZE);
+  // TODO: fix sector addresses
+  ata_outb_reg(adisk->ata_channel, ATA_REG_SECNUM, 1111);
+  ata_outb_reg(adisk->ata_channel, ATA_REG_SECCOUNT0, 1111);
+  ata_outb_reg(adisk->ata_channel, ATA_REG_SECCOUNT1, 1111);
+  ata_outb_reg(adisk->ata_channel, ATA_REG_SECCOUNT2, 1111);
+  if (write)
+    ata_outb_reg(adisk->ata_channel, ATA_REG_COMMAND, ATA_CMD_WRITE_DMA);
+  else
+    ata_outb_reg(adisk->ata_channel, ATA_REG_COMMAND, ATA_CMD_READ_DMA);
+  ata_pause(adisk->ata_channel);
+  dma_start(adisk->ata_channel, , write); 
+  sched_sleep_on(&adisk->ata_waitq);
+  int status = ata_inb_reg(adisk->ata_channel, ATA_REG_STATUS);
+  int error = 0;
+  if (status & ATA_SR_ERR) {
+    int error = ata_inb_reg(adisk->ata_channel, ATA_REG_ERROR);
+    dma_reset(ad
+  }
+
+  intr_setipl(old_ipl);
+  kmutex_unlock(&adisk->ata_mutex);
+  return -1*error;
 }
 
 /**
@@ -495,7 +527,7 @@ static int ata_do_operation(ata_disk_t *adisk, char *data, blocknum_t blocknum,
  * a pointer to an ata_disk_t struct.
  */
 static void ata_intr(regs_t *regs, void *arg) {
-  NOT_YET_IMPLEMENTED("DRIVERS: ata_intr");
+  sched_wakeup_on(&((ata_disk_t *)arg)->ata_waitq);
 }
 
 /*

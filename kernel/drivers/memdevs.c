@@ -31,7 +31,19 @@ bytedev_ops_t zero_dev_ops = {zero_read, null_write, zero_mmap,
  * The byte device code needs to know about these mem devices, so create
  * bytedev_t's for null and zero, fill them in, and register them.
  */
-void memdevs_init() { NOT_YET_IMPLEMENTED("DRIVERS: memdevs_init"); }
+void memdevs_init() { 
+  NOT_YET_IMPLEMENTED("DRIVERS: memdevs_init");
+  bytedev_t *null = kmalloc(sizeof(bytedev_t));
+  bytedev_t *zero = kmalloc(sizeof(bytedev_t));
+  list_link_init(&null->cd_link);
+  list_link_init(&zero->cd_link);
+  null->cd_ops = &null_dev_ops;
+  zero->cd_ops = &zero_dev_ops;
+  null->cd_id = MKDEVID(1,0);
+  zero->cd_id = MKDEVID(1,1);
+  KASSERT(!bytedev_register(null));
+  KASSERT(!bytedev_register(zero));
+}
 
 /**
  * Reads a given number of bytes from the null device into a
@@ -44,8 +56,7 @@ void memdevs_init() { NOT_YET_IMPLEMENTED("DRIVERS: memdevs_init"); }
  * @return the number of bytes read, which should be 0
  */
 static int null_read(bytedev_t *dev, int offset, void *buf, int count) {
-  NOT_YET_IMPLEMENTED("DRIVERS: null_read");
-  return -ENOMEM;
+  return 0;
 }
 
 /**
@@ -60,8 +71,7 @@ static int null_read(bytedev_t *dev, int offset, void *buf, int count) {
  * @return the number of bytes written, which should be count
  */
 static int null_write(bytedev_t *dev, int offset, const void *buf, int count) {
-  NOT_YET_IMPLEMENTED("DRIVERS: null_write");
-  return -ENOMEM;
+  return count;
 }
 
 /**
@@ -76,8 +86,10 @@ static int null_write(bytedev_t *dev, int offset, const void *buf, int count) {
  * number of bytes
  */
 static int zero_read(bytedev_t *dev, int offset, void *buf, int count) {
-  NOT_YET_IMPLEMENTED("DRIVERS: zero_read");
-  return 0;
+  char *buff = buf;
+  for (int i = 0; i < count; ++i)
+    buff[offset+i] = 0; 
+  return count;
 }
 
 /* Don't worry about these until VM. Once you're there, they shouldn't be hard.
