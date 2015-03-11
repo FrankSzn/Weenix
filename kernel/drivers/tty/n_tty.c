@@ -15,7 +15,7 @@
 /* helpful macros */
 #define EOFC '\x4'
 #define ldisc_to_ntty(ldisc) CONTAINER_OF(ldisc, n_tty_t, ntty_ldisc)
-#define TTY_BUF_SIZE_T unsigned char
+#define TTY_BUF_SIZE_T uint8_t
 
 static void n_tty_attach(tty_ldisc_t *ldisc, tty_device_t *tty);
 static void n_tty_detach(tty_ldisc_t *ldisc, tty_device_t *tty);
@@ -69,6 +69,7 @@ void n_tty_destroy(tty_ldisc_t *ldisc) {
  * you will need later, and set the tty_ldisc field of the tty.
  */
 void n_tty_attach(tty_ldisc_t *ldisc, tty_device_t *tty) {
+  dbg(DBG_TERM, "\n");
   n_tty_t *nt = ldisc_to_ntty(ldisc);
   kmutex_init(&nt->rlock);
   sched_queue_init(&nt->rwaitq);
@@ -86,6 +87,7 @@ void n_tty_attach(tty_ldisc_t *ldisc, tty_device_t *tty) {
  * field of the tty.
  */
 void n_tty_detach(tty_ldisc_t *ldisc, tty_device_t *tty) {
+  dbg(DBG_TERM, "\n");
   n_tty_t *nt = ldisc_to_ntty(ldisc);
   kfree(nt->inbuf);
   tty->tty_ldisc = NULL;
@@ -111,11 +113,13 @@ void n_tty_detach(tty_ldisc_t *ldisc, tty_device_t *tty) {
  * properly.
  */
 int n_tty_read(tty_ldisc_t *ldisc, void *buf, int len) {
+  dbg(DBG_TERM, "\n");
 
   KASSERT(len >= 0);
   n_tty_t *nt = ldisc_to_ntty(ldisc);
   kmutex_lock(&nt->rlock);
 
+  // TODO: ask mentor about this sleep
   if (nt->rhead == nt->ckdtail)
     sched_cancellable_sleep_on(&nt->rwaitq);
 
@@ -150,28 +154,32 @@ int n_tty_read(tty_ldisc_t *ldisc, void *buf, int len) {
  */
 const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
   n_tty_t *nt = ldisc_to_ntty(ldisc);
-  // TODO: lock necessary?
-  kmutex_lock(&nt->rlock);
+  dbg(DBG_TERM, "\n");
   
   char *out_string = kmalloc(2);
   KASSERT(out_string);
   out_string[0] = c;
   out_string[1] = '\0';
   
-  if (c == 0x08 || c== 0x7F) { // Backspace
+  if (c == 0x08 || c == 0x7F) { // Backspace
     if (nt->rawtail != nt->ckdtail) {
       --nt->rawtail;
       *get_rawtail(nt) = '\0';
+    } else {
+      out_string[0] = '\0';
+      dbg(DBG_TERM, "Ignoring backspace\n");
     }
-    kmutex_unlock(&nt->rlock);
     return out_string;
-  } else if (nt->rawtail != nt->rhead) {
+  } else if (nt->rawtail + 1 != nt->rhead) {
     *get_rawtail(nt) = c;
     ++nt->rawtail;
-    if (c == '\r' || c == '\n') // New line
+    dbg(DBG_TERM, "added %c, new rawtail %d\n", c, nt->rawtail);
+    // TODO: ask mentor about EOF
+    if (c == '\r' || c == '\n') { // New line
       nt->ckdtail = nt->rawtail;
+      sched_broadcast_on(&nt->rwaitq);
+    }
   }
-  kmutex_unlock(&nt->rlock);
   return out_string;
 }
 
@@ -181,14 +189,9 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
  * The only special case is '\r' and '\n'.
  */
 const char *n_tty_process_char(tty_ldisc_t *ldisc, char c) {
+  dbg(DBG_TERM, "\n");
   char * out_string = kmalloc(2);
   KASSERT(out_string);
-  
-  // TODO: Handle ctrl-D
-  if (c == '\r' || c == '\n')
-    out_string[0] = '\0';
-  else
-    out_string[0] = c;
-  out_string[1] = '\0';
+  out_string[0] = c;
   return out_string;
 }

@@ -11,7 +11,9 @@ static list_t bytedevs;
 void bytedev_init() {
   list_init(&bytedevs);
   /* Initialize all subsystems */
+  dbg(DBG_TERM, "running tty_init\n");
   tty_init();
+  dbg(DBG_TERM, "running memdevs_init\n");
   memdevs_init();
 }
 

@@ -1,4 +1,4 @@
-cscope 15 $HOME/weenix               0000995017
+cscope 15 $HOME/weenix               0000995680
 	@kernel/api/access.c
 
 1 
@@ -8385,19 +8385,31 @@ li°_t
 	gbyãdevs
 ;
 
-12 
+11 
 	$byãdev_öô
-()
+() {
 
-14 
+12 
 	`li°_öô
 (&
 byãdevs
 );
 
-16 
+14 
+	`dbg
+(
+DBG_TERM
+, "runningÅty_init\n");
+
+15 
 	`ây_öô
 ();
+
+16 
+	`dbg
+(
+DBG_TERM
+, "running memdevs_init\n");
 
 17 
 	`memdevs_öô
@@ -8407,39 +8419,31 @@ byãdevs
 	}
 }
 
-21 
+20 
 	$byãdev_ªgi°î
 (
 byãdev_t
  *
 dev
-)
+) {
 
-23 
+21 
 byãdev_t
  *
 cd
 ;
 
-26 i‡(!
+24 i‡(!
 dev
-
-
-27 || (
+ || (
 NULL_DEVID
- =
-dev
-->
+ =dev->
 cd_id
-)
-
-28 || !(
-dev
-->
+Ë|| !(dev->
 cd_›s
 ))
 
-32 
+28 
 	`li°_ôî©e_begö
 (&
 byãdevs
@@ -8451,7 +8455,7 @@ byãdev_t
 cd_lök
 ) {
 
-33 i‡(
+29 i‡(
 dev
 ->
 cd_id
@@ -8459,11 +8463,11 @@ cd_id
 cd
 ->cd_id)
 
-35 } 
+32 
 	`li°_ôî©e_íd
 ();
 
-39 
+36 
 	`li°_ö£π_èû
 (&
 byãdevs
@@ -8473,29 +8477,27 @@ dev
 cd_lök
 );
 
-41 
+38 
 	}
 }
 
-43 
+40 
 byãdev_t
  *
-
-44 
 	$byãdev_lookup
 (
 devid_t
  
 id
-)
+) {
 
-46 
+41 
 byãdev_t
  *
 cd
 ;
 
-48 
+43 
 	`li°_ôî©e_begö
 (&
 byãdevs
@@ -8507,7 +8509,7 @@ byãdev_t
 cd_lök
 ) {
 
-49 
+44 
 	`KASSERT
 (
 NULL_DEVID
@@ -8517,7 +8519,7 @@ cd
 cd_id
 );
 
-50 i‡(
+45 i‡(
 id
  =
 cd
@@ -8525,19 +8527,19 @@ cd
 cd_id
 )
 
-51  
+46  
 cd
 ;
 
-52 } 
+48 
 	`li°_ôî©e_íd
 ();
 
-54  
+50  
 NULL
 ;
 
-55 
+51 
 	}
 }
 
@@ -8737,403 +8739,377 @@ uöt16_t
 
 77 } 
 ATA_CHANNELS
-[2] = {
-
-79 
+[2] = {{
 ATA_PRIMARY_CMD_BASE
-,
-
-80 
+, 
 ATA_PRIMARY_CTRL_BASE
 ,
 
-81 
+78 
 INTR_DISK_PRIMARY
-,
-
-82 
+, 
 NULL
-,
+, NULL, NULL},
 
-83 
-NULL
-,
-
-84 
-NULL
-
-
-87 
+79 {
 ATA_SECONDARY_CMD_BASE
-,
-
-88 
+, 
 ATA_SECONDARY_CTRL_BASE
 ,
 
-89 
+80 
 INTR_DISK_SECONDARY
-,
-
-90 
+, 
 NULL
-,
-
-91 
-NULL
-,
-
-92 
-NULL
-
-
-94 
+, NULL, NULL}
 	}
 };
 
-96 
+82 
 	#ATA_NUM_CHANNELS
  2
 
 	)
 
-98 
+84 
 	#ATA_SECTOR_SIZE
  512
 
 	)
 
-101 
+87 
 	#ATA_DRIVEHEAD_MASTER
  0xA0
 
 	)
 
-102 
+88 
 	#ATA_DRIVEHEAD_SLAVE
  0xB0
 
 	)
 
-106 
+92 
 	#ATA_REG_DATA
  0x00
 
 	)
 
-107 
+93 
 	#ATA_REG_ERROR
  0x01
 
 	)
 
-108 
+94 
 	#ATA_REG_FEATURE
  0x01
 
 	)
 
-109 
+95 
 	#ATA_REG_SECCOUNT0
  0x02
 
 	)
 
-110 
+96 
 	#ATA_REG_SECNUM
  0x03
 
 	)
 
-111 
+97 
 	#ATA_REG_CYLLOW
  0x04
 
 	)
 
-112 
+98 
 	#ATA_REG_CYLHIGH
  0x05
 
 	)
 
-113 
+99 
 	#ATA_REG_LBA0
  0x03
 
 	)
 
-114 
+100 
 	#ATA_REG_LBA1
  0x04
 
 	)
 
-115 
+101 
 	#ATA_REG_LBA2
  0x05
 
 	)
 
-116 
+102 
 	#ATA_REG_DRIVEHEAD
- 0x06
+ \
+
+103 0x06
 
 	)
 
-117 
+104 
 	#ATA_REG_COMMAND
  0x07
 
 	)
 
-118 
+105 
 	#ATA_REG_STATUS
  0x07
 
 	)
 
-119 
+106 
 	#ATA_REG_SECCOUNT1
  0x08
 
 	)
 
-120 
+107 
 	#ATA_REG_LBA3
  0x09
 
 	)
 
-121 
+108 
 	#ATA_REG_LBA4
  0x0A
 
 	)
 
-122 
+109 
 	#ATA_REG_LBA5
  0x0B
 
 	)
 
-123 
+110 
 	#ATA_REG_NIEN_CONTROL
  0x0C
 
 	)
 
-126 
+113 
 	#ATA_REG_CONTROL
  0x06
 
 	)
 
-128 
+115 
 	#ATA_REG_ALTSTATUS
  0x06
 
 	)
 
-129 
+116 
 	#ATA_REG_DEVADDRESS
  0x07
 
 	)
 
-132 
+119 
 	#ATA_SR_BSY
  0x80
 
 	)
 
-133 
+120 
 	#ATA_SR_DRDY
  0x40
 
 	)
 
-134 
+121 
 	#ATA_SR_DF
  0x20
 
 	)
 
-135 
+122 
 	#ATA_SR_DSC
  0x10
 
 	)
 
-136 
+123 
 	#ATA_SR_DRQ
  0x08
 
 	)
 
-137 
+124 
 	#ATA_SR_CORR
  0x04
 
 	)
 
-138 
+125 
 	#ATA_SR_IDX
  0x02
 
 	)
 
-139 
+126 
 	#ATA_SR_ERR
  0x01
 
 	)
 
-142 
+129 
 	#ATA_ER_BBK
  0x80
 
 	)
 
-143 
+130 
 	#ATA_ER_UNC
  0x40
 
 	)
 
-144 
+131 
 	#ATA_ER_MC
  0x20
 
 	)
 
-145 
+132 
 	#ATA_ER_IDNF
  0x10
 
 	)
 
-146 
+133 
 	#ATA_ER_MCR
  0x08
 
 	)
 
-147 
+134 
 	#ATA_ER_ABRT
  0x04
 
 	)
 
-148 
+135 
 	#ATA_ER_TK0NF
  0x02
 
 	)
 
-149 
+136 
 	#ATA_ER_AMNF
  0x01
 
 	)
 
-152 
+139 
 	#ATA_CMD_READ_PIO
  0x20
 
 	)
 
-153 
+140 
 	#ATA_CMD_READ_PIO_EXT
  0x24
 
 	)
 
-154 
+141 
 	#ATA_CMD_READ_DMA
  0xC8
 
 	)
 
-155 
+142 
 	#ATA_CMD_READ_DMA_EXT
  0x25
 
 	)
 
-156 
+143 
 	#ATA_CMD_WRITE_PIO
  0x30
 
 	)
 
-157 
+144 
 	#ATA_CMD_WRITE_PIO_EXT
  0x34
 
 	)
 
-158 
+145 
 	#ATA_CMD_WRITE_DMA
  0xCA
 
 	)
 
-159 
+146 
 	#ATA_CMD_WRITE_DMA_EXT
  0x35
 
 	)
 
-160 
+147 
 	#ATA_CMD_CACHE_FLUSH
  0xE7
 
 	)
 
-161 
+148 
 	#ATA_CMD_CACHE_FLUSH_EXT
  0xEA
 
 	)
 
-162 
+149 
 	#ATA_CMD_PACKET
  0xA0
 
 	)
 
-163 
+150 
 	#ATA_CMD_IDENTIFY_PACKET
  0xA1
 
 	)
 
-164 
+151 
 	#ATA_CMD_IDENTIFY
  0xEC
 
 	)
 
-167 
+154 
 	#ATA_DRIVEHEAD_CHS
  0x00
 
 	)
 
-168 
+155 
 	#ATA_DRIVEHEAD_LBA
  0x40
 
 	)
 
-170 
+157 
 	#ATA_IDENT_MAX_LBA
  30
 
 	)
 
-173 
+160 
 	#©a_öb_ªg
 (
 ch™√l
@@ -9149,7 +9125,7 @@ ATA_CHANNELS
 
 	)
 
-174 
+161 
 	#©a_öw_ªg
 (
 ch™√l
@@ -9165,7 +9141,7 @@ ATA_CHANNELS
 
 	)
 
-175 
+162 
 	#©a_öl_ªg
 (
 ch™√l
@@ -9181,7 +9157,7 @@ ATA_CHANNELS
 
 	)
 
-178 
+165 
 	#©a_outb_ªg
 (
 ch™√l
@@ -9191,7 +9167,7 @@ ch™√l
 d©a
 ) \
 
-179 
+166 
 	`outb
 (
 ATA_CHANNELS
@@ -9207,7 +9183,7 @@ d©a
 
 	)
 
-180 
+167 
 	#©a_outw_ªg
 (
 ch™√l
@@ -9217,7 +9193,7 @@ ch™√l
 d©a
 ) \
 
-181 
+168 
 	`outw
 (
 ATA_CHANNELS
@@ -9233,7 +9209,7 @@ d©a
 
 	)
 
-182 
+169 
 	#©a_oué_ªg
 (
 ch™√l
@@ -9243,7 +9219,7 @@ ch™√l
 d©a
 ) \
 
-183 
+170 
 	`oué
 (
 ATA_CHANNELS
@@ -9259,13 +9235,13 @@ d©a
 
 	)
 
-186 
+173 
 	#©a_öb_Æt°©us
 (
 ch™√l
 ) \
 
-187 
+174 
 	`öb
 (
 ATA_CHANNELS
@@ -9279,53 +9255,47 @@ ATA_REG_ALTSTATUS
 
 	)
 
-192 
+178 
 	$©a_sync
 (
 uöt8_t
  
 ch™√l
-)
-
-194 
+Ë{ 
 	`©a_öb_Æt°©us
-(
-ch™√l
-);
-
-195 
+(ch™√l); 
 	}
 }
 
-199 
+181 
 	$©a_∑u£
 (
 uöt8_t
  
 ch™√l
-)
+) {
 
-201 
+182 
 	`©a_sync
 (
 ch™√l
 );
 
-202 
+183 
 	`ndñay
 (400);
 
-203 
+184 
 	}
 }
 
-205 
+186 
 	#ATA_IDENT_BUFSIZE
  256
 
 	)
 
-207 
+188 
 	#bd_to_©a
 (
 bd
@@ -9339,67 +9309,67 @@ bd
 
 	)
 
-210 
+190 
 	s©a_disk
  {
 
-212 
+192 
 uöt8_t
  
 	m©a_ch™√l
 ;
 
-215 
+195 
 uöt8_t
  
 	m©a_drive
 ;
 
-218 
+198 
 uöt32_t
  
 	m©a_size
 ;
 
-220 
+200 
 uöt32_t
  
 	m©a_£˘‹s_≥r_block
 ;
 
-224 
+204 
 ktqueue_t
  
 	m©a_waôq
 ;
 
-228 
+208 
 kmuãx_t
  
 	m©a_muãx
 ;
 
-231 
+211 
 blockdev_t
  
 	m©a_bdev
 ;
 
-232 } 
+212 } 
 	t©a_disk_t
 ;
 
-235 
+215 
 uöt16_t
  
 ©a_£tup_busma°î
 (
 ©a_disk_t
-* 
+ *
 adisk
 );
 
-237 
+217 
 	#NDISKS
  
 __NDISKS__
@@ -9407,7 +9377,7 @@ __NDISKS__
 
 	)
 
-239 
+219 
 ©a_öå_wøµî
 (
 ªgs_t
@@ -9415,7 +9385,7 @@ __NDISKS__
 ªgs
 );
 
-240 
+220 
 ©a_ªad
 (
 blockdev_t
@@ -9423,17 +9393,17 @@ blockdev_t
 bdev
 , *
 d©a
-,
-
-241 
+, 
 blocknum_t
  
 blocknum
-, 
+,
+
+221 
 cou¡
 );
 
-242 
+222 
 ©a_wrôe
 (
 blockdev_t
@@ -9441,17 +9411,17 @@ blockdev_t
 bdev
 , c⁄° *
 d©a
-,
-
-243 
+, 
 blocknum_t
  
 blocknum
-, 
+,
+
+223 
 cou¡
 );
 
-244 
+224 
 ©a_do_›î©i⁄
 (
 ©a_disk_t
@@ -9459,17 +9429,17 @@ cou¡
 adisk
 , *
 d©a
-, \
-
-245 
+, 
 blocknum_t
  
 £˘‹num
-, 
+,
+
+225 
 wrôe
 );
 
-246 
+226 
 ©a_öå
 (
 ªgs_t
@@ -9479,33 +9449,31 @@ wrôe
 ¨g
 );
 
-248 
+228 
 blockdev_›s_t
  
 	g©a_disk_›s
- = {
-
-249 .
+ = {.
 ªad_block
  = 
 ©a_ªad
 ,
 
-250 .
+229 .
 	gwrôe_block
  = 
 ©a_wrôe
+};
 
-
-254 
+231 
 	$©a_öô
-()
+() {
 
-256 
+232 
 ii
 ;
 
-258 
+234 
 	`öå_m≠
 (
 IRQ_DISK_PRIMARY
@@ -9513,7 +9481,7 @@ IRQ_DISK_PRIMARY
 INTR_DISK_PRIMARY
 );
 
-259 
+235 
 	`öå_m≠
 (
 IRQ_DISK_SECONDARY
@@ -9521,11 +9489,11 @@ IRQ_DISK_SECONDARY
 INTR_DISK_SECONDARY
 );
 
-261 
+237 
 	`dma_öô
 ();
 
-263 
+239 
 uöt8_t
  
 ﬁdùl
@@ -9533,27 +9501,27 @@ uöt8_t
 	`öå_gëùl
 ();
 
-264 
+240 
 	`öå_£tùl
 (
 INTR_DISK_PRIMARY
 );
 
-266 
+242 
 ii
  = 0; iò< 
 NDISKS
 ; ii++) {
 
-267 
+243 
 i
 ;
 
-268 
+244 
 îr
  = 0;
 
-269 
+245 
 uöt32_t
  
 idít_buf
@@ -9561,47 +9529,49 @@ idít_buf
 ATA_IDENT_BUFSIZE
 ];
 
-270 
+246 
 uöt8_t
  
 °©us
  = 0;
 
-271 
+247 
 ch™√l
  = 
 ii
 ;
 
-272 
+248 
 ©a_disk_t
  *
 adisk
 ;
 
-274 i‡(
+250 i‡(
 ii
  >
 ATA_NUM_CHANNELS
 )
 
-275 
+251 
 	`∑nic
 ("ATA doesÇot haveás many drives"
 
-278 
+254 
 	`©a_outb_ªg
 (
 ch™√l
 , 
 ATA_REG_DRIVEHEAD
-, 
+,
+
+255 
 ATA_DRIVEHEAD_MASTER
  | 
 ATA_DRIVEHEAD_LBA
 );
 
-280 
+257 
 	`©a_outb_ªg
 (
 ch™√l
@@ -9609,7 +9579,7 @@ ch™√l
 ATA_REG_SECCOUNT0
 , 0);
 
-282 
+259 
 	`©a_outb_ªg
 (
 ch™√l
@@ -9617,7 +9587,7 @@ ch™√l
 ATA_REG_LBA0
 , 0);
 
-283 
+260 
 	`©a_outb_ªg
 (
 ch™√l
@@ -9625,7 +9595,7 @@ ch™√l
 ATA_REG_LBA1
 , 0);
 
-284 
+261 
 	`©a_outb_ªg
 (
 ch™√l
@@ -9633,7 +9603,7 @@ ch™√l
 ATA_REG_LBA2
 , 0);
 
-287 
+264 
 	`outb
 (
 ATA_PRIMARY_CTRL_BASE
@@ -9641,7 +9611,7 @@ ATA_PRIMARY_CTRL_BASE
 ATA_REG_CONTROL
 , 0x02);
 
-290 
+267 
 	`©a_outb_ªg
 (
 ch™√l
@@ -9651,13 +9621,13 @@ ATA_REG_COMMAND
 ATA_CMD_IDENTIFY
 );
 
-293 
+270 
 	`©a_∑u£
 (
 ch™√l
 );
 
-296 i‡(0x00 =
+273 i‡(0x00 =
 	`©a_öb_ªg
 (
 ch™√l
@@ -9665,13 +9635,13 @@ ch™√l
 ATA_REG_STATUS
 )) {
 
-297 
+274 
 	`dbgq
 (
 DBG_DISK
 , "Drive doesÇotÉxist\n");
 
-303 
+280 
 °©us
  = 
 	`©a_öb_ªg
@@ -9681,19 +9651,19 @@ ch™√l
 ATA_REG_STATUS
 );
 
-304 i‡(!(
+281 i‡(!(
 °©us
  & 
 ATA_SR_BSY
-)) ;
+))
 
-305 
+283 
 	`©a_∑u£
 (
 ch™√l
 );
 
-310 
+289 
 °©us
  = 
 	`©a_öb_ªg
@@ -9703,35 +9673,37 @@ ch™√l
 ATA_REG_STATUS
 );
 
-311 i‡(
+290 i‡(
 °©us
  & 
 ATA_SR_ERR
-Ë{ 
-îr
- = 1; ; }
+) {
 
-312 i‡(
+291 
+îr
+ = 1;
+
+294 i‡(
 °©us
  & 
 ATA_SR_DRQ
-) ;
+)
 
-313 
+296 
 	`©a_∑u£
 (
 ch™√l
 );
 
-316 i‡(
+299 i‡(
 îr
 ) {
 
-317 
+300 
 	`∑nic
 ("Error setting up ATA drive\n");
 
-321 
+304 
 	`outb
 (
 ATA_PRIMARY_CTRL_BASE
@@ -9739,11 +9711,9 @@ ATA_PRIMARY_CTRL_BASE
 ATA_REG_CONTROL
 , 0x00);
 
-324 i‡(
+307 i‡(
 NULL
- ==
-
-325 (
+ =(
 adisk
  = (
 ©a_disk_t
@@ -9751,11 +9721,11 @@ adisk
 	`kmÆloc
 ((ata_disk_t))))
 
-326 
+308 
 	`∑nic
 ("NotÉnough memory foráta disk struct!\n");
 
-327 
+309 
 adisk
 ->
 ©a_ch™√l
@@ -9763,19 +9733,19 @@ adisk
 ch™√l
 ;
 
-328 
+310 
 adisk
 ->
 ©a_drive
  = 0;
 
-330 
+312 
 i
  = 0; i < 
 ATA_IDENT_BUFSIZE
 ; i++) {
 
-331 
+313 
 idít_buf
 [
 i
@@ -9789,7 +9759,7 @@ adisk
 ATA_REG_DATA
 );
 
-334 
+316 
 adisk
 ->
 ©a_size
@@ -9799,7 +9769,7 @@ idít_buf
 ATA_IDENT_MAX_LBA
 ];
 
-339 
+321 
 adisk
 ->
 ©a_£˘‹s_≥r_block
@@ -9809,7 +9779,7 @@ BLOCK_SIZE
 ATA_SECTOR_SIZE
 ;
 
-341 
+323 
 	`sched_queue_öô
 (&
 adisk
@@ -9817,7 +9787,7 @@ adisk
 ©a_waôq
 );
 
-342 
+324 
 	`kmuãx_öô
 (&
 adisk
@@ -9825,13 +9795,13 @@ adisk
 ©a_muãx
 );
 
-344 
+326 
 	`dbg
 (
 DBG_DISK
 , "Initialized ATA device %d, channel %s, drive %s, size %d\n",
 
-345 
+327 
 ii
 , (
 adisk
@@ -9839,7 +9809,7 @@ adisk
 ©a_ch™√l
  ? "SECONDARY" : "PRIMARY"),
 
-346 (
+328 (
 adisk
 ->
 ©a_drive
@@ -9847,7 +9817,7 @@ adisk
 ©a_size
 );
 
-349 
+331 
 	`öå_ªgi°î
 (
 ATA_CHANNELS
@@ -9857,13 +9827,11 @@ adisk
 ©a_ch™√l
 ].
 ©ac_öå
-,
-
-350 
+, 
 ©a_öå_wøµî
 );
 
-351 
+332 
 ATA_CHANNELS
 [
 adisk
@@ -9875,7 +9843,7 @@ adisk
 ©a_öå
 ;
 
-352 
+333 
 ATA_CHANNELS
 [
 adisk
@@ -9885,7 +9853,7 @@ adisk
 ©ac_öå_¨g
  =ádisk;
 
-353 
+334 
 ATA_CHANNELS
 [
 adisk
@@ -9893,11 +9861,15 @@ adisk
 ©a_ch™√l
 ].
 ©ac_busma°î
- = 
-	`©a_£tup_busma°î
-(adisk);
+ =
 
-355 
+335 
+	`©a_£tup_busma°î
+(
+adisk
+);
+
+337 
 adisk
 ->
 ©a_bdev
@@ -9911,7 +9883,7 @@ DISK_MAJOR
 ii
 );
 
-356 
+338 
 adisk
 ->
 ©a_bdev
@@ -9921,7 +9893,7 @@ bd_›s
 ©a_disk_›s
 ;
 
-357 
+339 
 	`blockdev_ªgi°î
 (&
 adisk
@@ -9929,41 +9901,41 @@ adisk
 ©a_bdev
 );
 
-359 
+341 
 	`öå_£tùl
 (
 ﬁdùl
 );
 
-360 
+342 
 	}
 }
 
-363 
+344 
 	$©a_öå_wøµî
 (
 ªgs_t
  *
 ªgs
-)
+) {
 
-365 
+345 
 i
 ;
 
-366 
+346 
 	`dbg
 (
 DBG_DISK
 , "ATA interrupt\n");
 
-367 
+347 
 i
  = 0; i < 
 ATA_NUM_CHANNELS
 ; i++) {
 
-369 i‡(
+349 i‡(
 ATA_CHANNELS
 [
 i
@@ -9975,7 +9947,7 @@ i
 r_öå
 ) {
 
-370 i‡(
+350 i‡(
 NULL
  =
 ATA_CHANNELS
@@ -9985,33 +9957,27 @@ i
 ©ac_öå_h™dÀr
 )
 
-371 
+351 
 	`∑nic
 ("No handlerÑegistered "
 
-372 "f‹ ATA ch™√»%d!\n", 
+353 
 i
 );
 
-373 
+354 
 ATA_CHANNELS
 [
 i
 ].
 	`©ac_öå_h™dÀr
 (
-
-374 
 ªgs
-, 
-ATA_CHANNELS
-[
-i
-].
+, ATA_CHANNELS[i].
 ©ac_öå_¨g
 );
 
-376 
+356 
 	`©a_öb_ªg
 (
 i
@@ -10019,15 +9985,15 @@ i
 ATA_REG_STATUS
 );
 
-380 
+360 
 	`∑nic
 ("Received interrupt on channel we don't knowábout\n");
 
-381 
+361 
 	}
 }
 
-394 
+373 
 	$©a_ªad
 (
 blockdev_t
@@ -10039,19 +10005,21 @@ d©a
 blocknum_t
  
 blocknum
-, 
-cou¡
-)
+,
 
-396 
+374 
+cou¡
+) {
+
+375 
 	`NOT_YET_IMPLEMENTED
 ("DRIVERS:áta_read");
 
-398 
+378 
 	}
 }
 
-411 
+390 
 	$©a_wrôe
 (
 blockdev_t
@@ -10063,19 +10031,57 @@ d©a
 blocknum_t
  
 blocknum
-, 
+,
+
+391 
 cou¡
+) {
+
+392 
+ªt
+ = 0;
+
+393 
+i
+ = 0; i < 
+cou¡
+ * 
+BLOCK_SIZE
+; i += BLOCK_SIZE) {
+
+394 
+ªt
+ = 
+	`©a_do_›î©i⁄
+(
+	`bd_to_©a
+(
+bdev
+), 
+d©a
+[
+i
+], 
+blocknum
+, 1);
+
+395 i‡(!
+ªt
 )
 
-413 
-	`NOT_YET_IMPLEMENTED
-("DRIVERS:áta_write");
+396  
+ªt
+;
 
-415 
+398  
+ªt
+;
+
+399 
 	}
 }
 
-506 
+489 
 	$©a_do_›î©i⁄
 (
 ©a_disk_t
@@ -10087,19 +10093,21 @@ d©a
 blocknum_t
  
 blocknum
-, 
-wrôe
-)
+,
 
-508 
+490 
+wrôe
+) {
+
+491 
 	`NOT_YET_IMPLEMENTED
 ("DRIVERS:áta_do_operation");
 
-510 
+520 
 	}
 }
 
-521 
+530 
 	$©a_öå
 (
 ªgs_t
@@ -10107,45 +10115,51 @@ wrôe
 ªgs
 , *
 ¨g
-)
+) {
 
-523 
-	`NOT_YET_IMPLEMENTED
-("DRIVERS:áta_intr");
+531 
+	`sched_wakeup_⁄
+(&((
+©a_disk_t
+ *)
+¨g
+)->
+©a_waôq
+);
 
-524 
+532 
 	}
 }
 
-530 
+538 
 uöt16_t
  
 	$©a_£tup_busma°î
 (
 ©a_disk_t
-* 
+ *
 adisk
 ) {
 
-532 
+540 
 pcidev_t
-* 
+ *
 ide
  = 
 	`pci_lookup
 (0x01, 0x01, 0x80);
 
-534 i‡(
+542 i‡(
 ide
  =
 NULL
 ) {
 
-535 
+543 
 	`∑nic
 ("CouldÇot find ide device\n");
 
-538 
+546 
 uöt32_t
  
 comm™d
@@ -10157,15 +10171,15 @@ ide
 PCI_COMMAND
 , 2);
 
-540 
+548 
 comm™d
  |= 0x4;
 
-542 
+550 
 comm™d
  &= 0xfdff;
 
-544 
+552 
 	`pci_wrôe_c⁄fig
 (
 ide
@@ -10175,11 +10189,13 @@ PCI_COMMAND
 comm™d
 , 2);
 
-546 
+554 
 uöt32_t
  
 busma°î_ba£
- = 
+ =
+
+555 
 ide
 ->
 pci_b¨
@@ -10191,27 +10207,27 @@ adisk
 ©a_ch™√l
  * 8);
 
-548 i‡(
+557 i‡(
 busma°î_ba£
  == 0) {
 
-549 
+558 
 	`∑nic
 ("No valid busmasteringáddress\n");
 
-552 
+561 
 	`KASSERT
 (
 busma°î_ba£
- != 0 && "Disk device shouldÇot have 0 forÅhe busmasterÑegister");
+ != 0 &&
 
-554  (
+564  (
 uöt16_t
 )
 busma°î_ba£
 ;
 
-555 
+565 
 	}
 }
 
@@ -12526,6 +12542,12 @@ ldisc
 ) {
 
 72 
+	`dbg
+(
+DBG_TERM
+, " ");
+
+73 
 n_ây_t
  *
 ¡
@@ -12535,7 +12557,7 @@ n_ây_t
 ldisc
 );
 
-73 
+74 
 	`kmuãx_öô
 (&
 ¡
@@ -12543,7 +12565,7 @@ ldisc
 æock
 );
 
-74 
+75 
 	`sched_queue_öô
 (&
 ¡
@@ -12551,7 +12573,7 @@ ldisc
 rwaôq
 );
 
-76 
+77 
 ¡
 ->
 öbuf
@@ -12561,25 +12583,25 @@ rwaôq
 TTY_BUF_SIZE_T
 ));
 
-77 
+78 
 ¡
 ->
 rhód
  = 0;
 
-78 
+79 
 ¡
 ->
 øwèû
  = 0;
 
-79 
+80 
 ¡
 ->
 ckdèû
  = 0;
 
-81 
+82 
 ây
 ->
 ây_ldisc
@@ -12587,11 +12609,11 @@ ckdèû
 ldisc
 ;
 
-82 
+83 
 	}
 }
 
-88 
+89 
 	$n_ây_dëach
 (
 ây_ldisc_t
@@ -12603,7 +12625,13 @@ ldisc
 ây
 ) {
 
-89 
+90 
+	`dbg
+(
+DBG_TERM
+, " ");
+
+91 
 n_ây_t
  *
 ¡
@@ -12613,7 +12641,7 @@ n_ây_t
 ldisc
 );
 
-90 
+92 
 	`k‰ì
 (
 ¡
@@ -12621,7 +12649,7 @@ ldisc
 öbuf
 );
 
-91 
+93 
 ây
 ->
 ây_ldisc
@@ -12629,11 +12657,11 @@ ldisc
 NULL
 ;
 
-92 
+94 
 	}
 }
 
-113 
+115 
 	$n_ây_ªad
 (
 ây_ldisc_t
@@ -12645,13 +12673,19 @@ buf
 Àn
 ) {
 
-115 
+116 
+	`dbg
+(
+DBG_TERM
+, " ");
+
+118 
 	`KASSERT
 (
 Àn
  >= 0);
 
-116 
+119 
 n_ây_t
  *
 ¡
@@ -12661,7 +12695,7 @@ n_ây_t
 ldisc
 );
 
-117 
+120 
 	`kmuãx_lock
 (&
 ¡
@@ -12669,7 +12703,7 @@ ldisc
 æock
 );
 
-119 i‡(
+123 i‡(
 ¡
 ->
 rhód
@@ -12677,7 +12711,7 @@ rhód
 ckdèû
 )
 
-120 
+124 
 	`sched_ˇn˚ŒabÀ_¶ìp_⁄
 (&
 ¡
@@ -12685,17 +12719,17 @@ ckdèû
 rwaôq
 );
 
-122 
+126 
 ªad
  = 0;
 
-123 *
+127 *
 buff
  = 
 buf
 ;
 
-124 ; 
+128 ; 
 ¡
 ->
 rhód
@@ -12705,7 +12739,7 @@ ckdèû
 Àn
 ; ++(nt->rhead)) {
 
-125 
+129 
 buff
 [
 ªad
@@ -12715,33 +12749,33 @@ buff
 ¡
 );
 
-126 --
+130 --
 Àn
 ;
 
-127 ++
+131 ++
 ªad
 ;
 
-128 i‡(
+132 i‡(
 buff
 [
 ªad
 -1] == '\n' ||
 
-129 
+133 
 buff
 [
 ªad
 -1] == '\r' ||
 
-130 
+134 
 buff
 [
 ªad
 -1] == 0x04)
 
-134 
+138 
 	`kmuãx_u∆ock
 (&
 ¡
@@ -12749,15 +12783,15 @@ buff
 æock
 );
 
-135  
+139  
 ªad
 ;
 
-136 
+140 
 	}
 }
 
-151 c⁄° *
+155 c⁄° *
 	$n_ây_ª˚ive_ch¨
 (
 ây_ldisc_t
@@ -12767,7 +12801,7 @@ ldisc
 c
 ) {
 
-152 
+156 
 n_ây_t
  *
 ¡
@@ -12777,41 +12811,39 @@ n_ây_t
 ldisc
 );
 
-154 
-	`kmuãx_lock
-(&
-¡
-->
-æock
-);
+157 
+	`dbg
+(
+DBG_TERM
+, " ");
 
-156 *
+159 *
 out_°rög
  = 
 	`kmÆloc
 (2);
 
-157 
+160 
 	`KASSERT
 (
 out_°rög
 );
 
-158 
+161 
 out_°rög
 [0] = 
 c
 ;
 
-159 
+162 
 out_°rög
 [1] = '\0';
 
-161 i‡(
+164 i‡(
 c
  == 0x08 || c== 0x7F) {
 
-162 i‡(
+165 i‡(
 ¡
 ->
 øwèû
@@ -12819,31 +12851,23 @@ c
 ckdèû
 ) {
 
-163 --
+166 --
 ¡
 ->
 øwèû
 ;
 
-164 *
+167 *
 	`gë_øwèû
 (
 ¡
 ) = '\0';
 
-166 
-	`kmuãx_u∆ock
-(&
-¡
-->
-æock
-);
-
-167  
+169  
 out_°rög
 ;
 
-168 } i‡(
+170 } i‡(
 ¡
 ->
 øwèû
@@ -12851,7 +12875,7 @@ out_°rög
 rhód
 ) {
 
-169 *
+171 *
 	`gë_øwèû
 (
 ¡
@@ -12859,17 +12883,17 @@ rhód
 c
 ;
 
-170 ++
+172 ++
 ¡
 ->
 øwèû
 ;
 
-171 i‡(
+174 i‡(
 c
- == '\r' || c == '\n')
+ == '\r' || c == '\n') {
 
-172 
+175 
 ¡
 ->
 ckdèû
@@ -12877,23 +12901,23 @@ ckdèû
 øwèû
 ;
 
-174 
-	`kmuãx_u∆ock
+176 
+	`sched_brﬂdˇ°_⁄
 (&
 ¡
 ->
-æock
+rwaôq
 );
 
-175  
+179  
 out_°rög
 ;
 
-176 
+180 
 	}
 }
 
-183 c⁄° *
+187 c⁄° *
 	$n_ây_¥o˚ss_ch¨
 (
 ây_ldisc_t
@@ -12903,41 +12927,47 @@ ldisc
 c
 ) {
 
-184 * 
+188 
+	`dbg
+(
+DBG_TERM
+, " ");
+
+189 * 
 out_°rög
  = 
 	`kmÆloc
 (2);
 
-185 
+190 
 	`KASSERT
 (
 out_°rög
 );
 
-188 i‡(
+193 i‡(
 c
  == '\r' || c == '\n')
 
-189 
+194 
 out_°rög
 [0] = '\0';
 
-191 
+196 
 out_°rög
 [0] = 
 c
 ;
 
-192 
+197 
 out_°rög
 [1] = '\0';
 
-193  
+198  
 out_°rög
 ;
 
-194 
+199 
 	}
 }
 
@@ -13372,54 +13402,68 @@ NULL
 () {
 
 64 
+	`dbg
+(
+DBG_TERM
+, "scree, vt, keyboard init\n");
+
+65 
 	`s¸ìn_öô
 ();
 
-65 
+66 
 	`vt_öô
 ();
 
-66 
+67 
 	`keybﬂrd_öô
 ();
 
-72 
+73 
 ¡îms
 , 
 i
 ;
 
-74 
+75 
 ¡îms
  = 
 	`vt_num_ãrmöÆs
 ();
 
-75 
+76 
 i
  = 0; i < 
 ¡îms
 ; ++i) {
 
-76 
+77 
+	`dbg
+(
+DBG_TERM
+, "¸ótögÇãrm %d\n", 
+i
+);
+
+78 
 ây_drivî_t
  *
 âyd
 ;
 
-77 
+79 
 ây_devi˚_t
  *
 ây
 ;
 
-78 
+80 
 ây_ldisc_t
  *
 ldisc
 ;
 
-80 
+82 
 âyd
  = 
 	`vt_gë_ây_drivî
@@ -13427,7 +13471,7 @@ ldisc
 i
 );
 
-81 
+83 
 	`KASSERT
 (
 NULL
@@ -13435,7 +13479,7 @@ NULL
 âyd
 );
 
-82 
+84 
 	`KASSERT
 (
 NULL
@@ -13445,7 +13489,7 @@ NULL
 âd_›s
 );
 
-83 
+85 
 	`KASSERT
 (
 NULL
@@ -13457,7 +13501,7 @@ NULL
 ªgi°î_ˇŒback_h™dÀr
 );
 
-85 
+87 
 ây
  = 
 	`ây_¸óã
@@ -13467,21 +13511,21 @@ NULL
 i
 );
 
-86 i‡(
+88 i‡(
 NULL
  =
 ây
 ) {
 
-87 
+89 
 	`∑nic
 ("NotÉnough memoryÅoállocateÅty\n");
 
-90 i‡(
+92 i‡(
 NULL
  !=
 
-91 
+93 
 âyd
 ->
 âd_›s
@@ -13489,7 +13533,7 @@ NULL
 	`ªgi°î_ˇŒback_h™dÀr
 (
 
-92 
+94 
 âyd
 , 
 ây_globÆ_drivî_ˇŒback
@@ -13497,31 +13541,37 @@ NULL
 ây
 )) {
 
-93 
+95 
 	`∑nic
 ("CallbackálreadyÑegistered "
 
-95 
+97 
 i
 );
 
-98 
+100 
+	`dbg
+(
+DBG_TERM
+, "n_tty_create\n");
+
+101 
 ldisc
  = 
 	`n_ây_¸óã
 ();
 
-99 i‡(
+102 i‡(
 NULL
  =
 ldisc
 ) {
 
-100 
+103 
 	`∑nic
 ("NotÉnough memoryÅoállocate "
 
-103 
+106 
 	`KASSERT
 (
 NULL
@@ -13529,7 +13579,7 @@ NULL
 ldisc
 );
 
-104 
+107 
 	`KASSERT
 (
 NULL
@@ -13539,7 +13589,7 @@ ldisc
 ld_›s
 );
 
-105 
+108 
 	`KASSERT
 (
 NULL
@@ -13551,7 +13601,13 @@ ld_›s
 ©èch
 );
 
-106 
+109 
+	`dbg
+(
+DBG_TERM
+, "ldiscáttach\n");
+
+110 
 ldisc
 ->
 ld_›s
@@ -13561,7 +13617,13 @@ ld_›s
 ây
 );
 
-108 i‡(
+112 
+	`dbg
+(
+DBG_TERM
+, "bytedev_register\n");
+
+113 i‡(
 	`byãdev_ªgi°î
 (&
 ây
@@ -13569,15 +13631,15 @@ ld_›s
 ây_cdev
 ) != 0) {
 
-109 
+114 
 	`∑nic
 ("ErrorÑegisteringÅtyás byte device\n");
 
-112 
+117 
 	}
 }
 
-120 
+125 
 ây_devi˚_t
  *
 	$ây_¸óã
@@ -13589,13 +13651,19 @@ drivî
 id
 ) {
 
-121 
+126 
+	`dbg
+(
+DBG_TERM
+, "tty_create\n");
+
+127 
 	`KASSERT
 (
 drivî
 );
 
-122 
+128 
 ây_devi˚_t
  *
 td
@@ -13603,13 +13671,11 @@ td
 	`kmÆloc
 ((tty_device_t));
 
-123 
-	`KASSERT
-(
+129 i‡(!
 td
-);
+) Åd;
 
-125 
+131 
 td
 ->
 ây_id
@@ -13617,7 +13683,7 @@ td
 id
 ;
 
-126 
+132 
 td
 ->
 ây_drivî
@@ -13625,15 +13691,7 @@ td
 drivî
 ;
 
-127 
-td
-->
-ây_ldisc
- = 
-	`n_ây_¸óã
-();
-
-128 
+133 
 	`KASSERT
 (
 td
@@ -13641,7 +13699,7 @@ td
 ây_ldisc
 );
 
-130 
+135 
 td
 ->
 ây_cdev
@@ -13655,7 +13713,7 @@ TTY_MAJOR
 id
 );
 
-131 
+136 
 	`li°_lök_öô
 (&
 td
@@ -13665,39 +13723,25 @@ td
 cd_lök
 );
 
-133 
-td
-->
-ây_cdev
-.
-cd_›s
-->
-wrôe
- = 
-ây_wrôe
-;
-
-134 
-td
-->
-ây_cdev
-.
-cd_›s
-->
-ªad
- = 
-ây_ªad
-;
-
-136  
-td
-;
-
 137 
+td
+->
+ây_cdev
+.
+cd_›s
+ = &
+ây_byãdev_›s
+;
+
+139  
+td
+;
+
+140 
 	}
 }
 
-152 
+155 
 	$ây_globÆ_drivî_ˇŒback
 (*
 ¨g
@@ -13705,7 +13749,13 @@ td
 c
 ) {
 
-153 
+156 
+	`dbg
+(
+DBG_TERM
+, " ");
+
+157 
 ây_devi˚_t
  *
 td
@@ -13713,7 +13763,7 @@ td
 ¨g
 ;
 
-154 c⁄° *
+158 c⁄° *
 out
  = 
 td
@@ -13727,7 +13777,7 @@ ld_›s
 c
 );
 
-155 
+159 
 	`ây_echo
 (
 td
@@ -13737,17 +13787,17 @@ td
 out
 );
 
-156 
+160 
 	`k‰ì
 ((*)
 out
 );
 
-157 
+161 
 	}
 }
 
-163 
+167 
 	$ây_echo
 (
 ây_drivî_t
@@ -13757,13 +13807,19 @@ drivî
 out
 ) {
 
-164 
+168 
+	`dbg
+(
+DBG_TERM
+, " ");
+
+169 
 i
  = 0; 
 out
 [i] != '\0'; ++i)
 
-165 
+170 
 drivî
 ->
 âd_›s
@@ -13775,11 +13831,11 @@ out
 i
 ]);
 
-166 
+171 
 	}
 }
 
-173 
+178 
 	$ây_ªad
 (
 byãdev_t
@@ -13793,7 +13849,13 @@ buf
 cou¡
 ) {
 
-174 
+179 
+	`dbg
+(
+DBG_TERM
+, " ");
+
+180 
 ây_devi˚_t
  *
 td
@@ -13803,7 +13865,7 @@ td
 dev
 );
 
-175 *
+181 *
 d©a
  = 
 td
@@ -13815,7 +13877,7 @@ td
 	`block_io
 (td->tty_driver);
 
-176 
+182 
 out
  = 
 td
@@ -13827,13 +13889,11 @@ ld_›s
 	`ªad
 —d->ây_ldisc, (*)
 buf
-+
-off£t
 , 
 cou¡
 );
 
-177 
+183 
 td
 ->
 ây_drivî
@@ -13845,15 +13905,15 @@ td
 d©a
 );
 
-178  
+184  
 out
 ;
 
-179 
+185 
 	}
 }
 
-189 
+195 
 	$ây_wrôe
 (
 byãdev_t
@@ -13867,7 +13927,13 @@ buf
 cou¡
 ) {
 
-190 
+196 
+	`dbg
+(
+DBG_TERM
+, " ");
+
+197 
 ây_devi˚_t
  *
 td
@@ -13877,7 +13943,7 @@ td
 dev
 );
 
-191 *
+198 *
 d©a
  = 
 td
@@ -13889,17 +13955,17 @@ td
 	`block_io
 (td->tty_driver);
 
-192 
+199 
 wrôãn
  = 0;
 
-193 
+200 
 i
  = 0; i < 
 cou¡
 ; ++i) {
 
-194 c⁄° *
+201 c⁄° *
 out
  = 
 td
@@ -13912,16 +13978,14 @@ ld_›s
 —d->ây_ldisc, *((*)
 buf
 +
-off£t
-+
 i
 ));
 
-195 i‡(
+202 i‡(
 out
 [0])
 
-196 
+203 
 td
 ->
 ây_drivî
@@ -13933,17 +13997,17 @@ td
 out
 [0]);
 
-197 
+204 
 	`k‰ì
 ((*)
 out
 );
 
-198 ++
+205 ++
 wrôãn
 ;
 
-200 
+207 
 td
 ->
 ây_drivî
@@ -13955,11 +14019,11 @@ td
 d©a
 );
 
-201  
+208  
 wrôãn
 ;
 
-202 
+209 
 	}
 }
 
@@ -60205,25 +60269,37 @@ __VM__
 	`kthªad_öô
 ();
 
-95 #ifde‡
+95 
+	`dbg
+(
+DBG_INIT
+, "starting drivers code\n");
+
+96 #ifde‡
 __DRIVERS__
 
 
-96 
+97 
 	`byãdev_öô
 ();
 
-97 
+98 
 	`blockdev_öô
 ();
 
-100 *
+100 
+	`dbg
+(
+DBG_INIT
+, "drivers started\n");
+
+102 *
 b°ack
  = 
 	`∑ge_Æloc
 ();
 
-101 
+103 
 ∑gedú_t
  *
 bpdú
@@ -60231,7 +60307,7 @@ bpdú
 	`±_gë
 ();
 
-102 
+104 
 	`KASSERT
 (
 NULL
@@ -60239,7 +60315,7 @@ NULL
 b°ack
  && "Ran out of memory while booting.");
 
-103 
+105 
 	`c⁄ãxt_£tup
 (&
 boŸ°øp_c⁄ãxt
@@ -60253,25 +60329,25 @@ b°ack
 PAGE_SIZE
 ,
 
-104 
+106 
 bpdú
 );
 
-105 
+107 
 	`c⁄ãxt_make_a˘ive
 (&
 boŸ°øp_c⁄ãxt
 );
 
-107 
+109 
 	`∑nic
 ("\nReturnedÅo kmain()!!!\n");
 
-108 
+110 
 	}
 }
 
-123 *
+125 *
 	$boŸ°øp
 (
 ¨g1
@@ -60279,17 +60355,23 @@ boŸ°øp_c⁄ãxt
 ¨g2
 ) {
 
-125 
+126 
+	`dbg
+(
+DBG_INIT
+, "starting bootstrap\n");
+
+128 
 	`±_ãm∂©e_öô
 ();
 
-127 
+130 
 cuΩroc
  = 
 	`¥oc_¸óã
 ("idle");
 
-128 
+131 
 cuπhr
  = 
 	`kthªad_¸óã
@@ -60303,7 +60385,7 @@ idÀ¥oc_run
 ¨g2
 );
 
-129 
+132 
 cuπhr
 ->
 kt_°©e
@@ -60311,13 +60393,13 @@ kt_°©e
 KT_RUN
 ;
 
-131 
+134 
 	`dbg
 (
 DBG_INIT
 , "switchingÅo idle\n");
 
-132 
+135 
 	`c⁄ãxt_make_a˘ive
 (&
 cuπhr
@@ -60325,19 +60407,19 @@ cuπhr
 kt_˘x
 );
 
-134 
+137 
 	`∑nic
 ("weenixÑeturnedÅo bootstrap()!!! BAD!!!\n");
 
-135  
+138  
 NULL
 ;
 
-136 
+139 
 	}
 }
 
-150 *
+153 *
 	$idÀ¥oc_run
 (
 ¨g1
@@ -60345,7 +60427,7 @@ NULL
 ¨g2
 ) {
 
-152 
+155 
 kthªad_t
  *
 öôthr
@@ -60353,41 +60435,41 @@ kthªad_t
 	`öô¥oc_¸óã
 ();
 
-153 
+156 
 	`öô_ˇŒ_Æl
 ();
 
-154 
+157 
 	`GDB_CALL_HOOK
 (
 öôülized
 );
 
-158 #ifde‡
+161 #ifde‡
 __VFS__
 
 
-169 
+172 
 	`öå_íabÀ
 ();
 
-172 
+175 
 	`sched_make_ru¬abÀ
 (
 öôthr
 );
 
-174 
+177 
 °©us
 ;
 
-175 
+178 
 	`dbg
 (
 DBG_INIT
 , "waiting on init\n");
 
-176 
+179 
 pid_t
  
 chûd
@@ -60397,7 +60479,7 @@ chûd
 °©us
 );
 
-177 
+180 
 	`KASSERT
 (
 PID_INIT
@@ -60405,31 +60487,31 @@ PID_INIT
 chûd
 );
 
-179 #ifde‡
+182 #ifde‡
 __MTP__
 
 
-180 
+183 
 	`kthªad_ª≠d_shutdown
 ();
 
-183 #ifde‡
+186 #ifde‡
 __SHADOWD__
 
 
-185 
+188 
 	`shadowd_shutdown
 ();
 
-188 #ifde‡
+191 #ifde‡
 __VFS__
 
 
-190 
+193 
 	`dbg_¥öt
 ("weenix: vfs shutdown...\n");
 
-191 
+194 
 	`vput
 (
 cuΩroc
@@ -60437,51 +60519,51 @@ cuΩroc
 p_cwd
 );
 
-192 i‡(
+195 i‡(
 	`vfs_shutdown
 ())
 
-193 
+196 
 	`∑nic
 ("vfs shutdown FAILED!!\n");
 
-198 #ifde‡
+201 #ifde‡
 __S5FS__
 
 
-199 
+202 
 	`p‰ame_shutdown
 ();
 
-202 
+205 
 	`dbg_¥öt
 ("\nweenix: halted cleanly!\n");
 
-203 
+206 
 	`GDB_CALL_HOOK
 (
 shutdown
 );
 
-204 
+207 
 	`h¨d_shutdown
 ();
 
-205  
+208  
 NULL
 ;
 
-206 
+209 
 	}
 }
 
-219 
+222 
 kthªad_t
  *
 	$öô¥oc_¸óã
 () {
 
-220 
+223 
 ¥oc_t
  *
 öô_p
@@ -60489,7 +60571,7 @@ kthªad_t
 	`¥oc_¸óã
 ("init");
 
-221 
+224 
 	`KASSERT
 (
 öô_p
@@ -60499,7 +60581,7 @@ p_pid
 PID_INIT
 );
 
-222  
+225  
 	`kthªad_¸óã
 (
 öô_p
@@ -60509,11 +60591,11 @@ PID_INIT
 NULL
 );
 
-223 
+226 
 	}
 }
 
-225 *
+228 *
 	$do_nŸhög
 (
 ¨g1
@@ -60521,19 +60603,19 @@ NULL
 ¨g2
 ) {
 
-226 
+229 
 	`dbg_¥öt
 ("newÖrocessÉxiting\n");
 
-227  
+230  
 NULL
 ;
 
-228 
+231 
 	}
 }
 
-241 *
+244 *
 	$öô¥oc_run
 (
 ¨g1
@@ -60541,19 +60623,19 @@ NULL
 ¨g2
 ) {
 
-242 
+245 
 	`dbg
 (
 DBG_INIT
 , "initÑunning\n");
 
-244 
+247 
 	`dbg
 (
 DBG_INIT
 , "CreatingÅest1Åhread\n");
 
-245 
+248 
 ¥oc_t
  *
 ¥oc1
@@ -60561,7 +60643,7 @@ DBG_INIT
 	`¥oc_¸óã
 ("test1");
 
-246 
+249 
 kthªad_t
  *
 thªad1
@@ -60575,19 +60657,19 @@ do_nŸhög
 NULL
 );
 
-247 
+250 
 	`sched_make_ru¬abÀ
 (
 thªad1
 );
 
-249 
+252 
 	`dbg
 (
 DBG_INIT
 , "Waiting onÅest1\n");
 
-250 
+253 
 	`do_waôpid
 (
 ¥oc1
@@ -60597,23 +60679,23 @@ p_pid
 NULL
 );
 
-252 
+255 
 	`dbg
 (
 DBG_INIT
 , "Creating fourÅhreads\n");
 
-253 
+256 
 pid_t
  
 pids
 [4];
 
-254 
+257 
 i
  = 0; i < 4; ++i) {
 
-255 
+258 
 	`dbg
 (
 DBG_INIT
@@ -60621,7 +60703,7 @@ DBG_INIT
 i
 );
 
-256 
+259 
 ¥oc_t
  *
 p
@@ -60629,7 +60711,7 @@ p
 	`¥oc_¸óã
 ("test");
 
-257 
+260 
 pids
 [
 i
@@ -60639,7 +60721,7 @@ p
 p_pid
 ;
 
-258 
+261 
 kthªad_t
  *
 thªad
@@ -60653,23 +60735,23 @@ do_nŸhög
 NULL
 );
 
-259 
+262 
 	`sched_make_ru¬abÀ
 (
 thªad
 );
 
-261 
+264 
 	`dbg
 (
 DBG_INIT
 , "Waiting on fourÅhreads");
 
-262 
+265 
 i
  = 3; i >= 0; --i) {
 
-263 
+266 
 	`do_waôpid
 (
 pids
@@ -60679,29 +60761,29 @@ i
 NULL
 );
 
-266 
+269 
 	`dbg
 (
 DBG_INIT
 , "Testing waitpidÉdge cases\n");
 
-268 
+271 
 	`do_waôpid
 (-1, 0, 
 NULL
 );
 
-269 
+272 
 	`do_waôpid
 (1208312, 0, 
 NULL
 );
 
-272 
+275 
 îr
  = 0;
 
-273 
+276 
 kshñl_t
  *
 ksh
@@ -60709,13 +60791,13 @@ ksh
 	`kshñl_¸óã
 (0);
 
-274 
+277 
 	`KASSERT
 (
 ksh
  && "kshell_create failed");
 
-276 (
+279 (
 îr
  = 
 	`kshñl_execuã_√xt
@@ -60723,43 +60805,43 @@ ksh
 ksh
 )) > 0);
 
-277 
+280 
 	`KASSERT
 (!
 îr
  && "kshellÉxited withÉrror");
 
-278 
+281 
 	`kshñl_de°roy
 (
 ksh
 );
 
-280  
+283  
 NULL
 ;
 
-281 
+284 
 	}
 }
 
-287 
+290 
 	$h¨d_shutdown
 () {
 
-288 #ifde‡
+291 #ifde‡
 __DRIVERS__
 
 
-289 
+292 
 	`vt_¥öt_shutdown
 ();
 
-291 
+294 
 __asm__
  volatile("cli; hlt");
 
-292 
+295 
 	}
 }
 

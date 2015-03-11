@@ -92,10 +92,12 @@ void kmain() {
   proc_init();
   kthread_init();
 
+dbg(DBG_INIT, "starting drivers code\n");
 #ifdef __DRIVERS__
   bytedev_init();
   blockdev_init();
 #endif
+dbg(DBG_INIT, "drivers started\n");
 
   void *bstack = page_alloc();
   pagedir_t *bpdir = pt_get();
@@ -121,6 +123,7 @@ void kmain() {
  * @param arg2 the second argument (unused)
  */
 static void *bootstrap(int arg1, void *arg2) {
+  dbg(DBG_INIT, "starting bootstrap\n");
   /* necessary to finalize page table information */
   pt_template_init();
 

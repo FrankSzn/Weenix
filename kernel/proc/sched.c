@@ -191,20 +191,21 @@ void sched_cancel(struct kthread *kthr) {
  */
 void sched_switch(void) {
   // Disable interrupts
-  intr_setipl(IPL_HIGH);
+  intr_disable();
+  kthread_t *old = curthr;
   // Wait for interrupt if empty
-  while (sched_queue_empty(&kt_runq)) {
+  while (!(curthr = ktqueue_dequeue(&kt_runq))) {
+    int old_ipl = intr_getipl();
+    KASSERT(old_ipl == IPL_LOW);
     intr_setipl(IPL_LOW);
     intr_wait();
+    intr_disable();
+    intr_setipl(old_ipl);
   }
-  intr_setipl(IPL_HIGH);
   // Switch threads
-  kthread_t *old = curthr;
-  // KASSERT(old->kt_wchan);
-  curthr = ktqueue_dequeue(&kt_runq);
   curproc = curthr->kt_proc;
   // Reenable interupts
-  intr_setipl(IPL_LOW);
+  intr_enable();
   KASSERT(curthr->kt_state == KT_RUN);
   context_switch(&old->kt_ctx, &curthr->kt_ctx);
 }

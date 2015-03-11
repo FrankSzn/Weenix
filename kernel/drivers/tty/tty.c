@@ -61,6 +61,7 @@ static bytedev_ops_t tty_bytedev_ops = {tty_read, tty_write, NULL,
                                         NULL,     NULL,      NULL};
 
 void tty_init() {
+  dbg(DBG_TERM, "scree, vt, keyboard init\n");
   screen_init();
   vt_init();
   keyboard_init();
@@ -73,6 +74,7 @@ void tty_init() {
 
   nterms = vt_num_terminals();
   for (i = 0; i < nterms; ++i) {
+    dbg(DBG_TERM, "creating nterm %d\n", i);
     tty_driver_t *ttyd;
     tty_device_t *tty;
     tty_ldisc_t *ldisc;
@@ -95,6 +97,7 @@ void tty_init() {
             i);
     }
 
+    dbg(DBG_TERM, "n_tty_create\n");
     ldisc = n_tty_create();
     if (NULL == ldisc) {
       panic("Not enough memory to allocate "
@@ -103,8 +106,10 @@ void tty_init() {
     KASSERT(NULL != ldisc);
     KASSERT(NULL != ldisc->ld_ops);
     KASSERT(NULL != ldisc->ld_ops->attach);
+    dbg(DBG_TERM, "ldisc attach\n");
     ldisc->ld_ops->attach(ldisc, tty);
 
+    dbg(DBG_TERM, "bytedev_register\n");
     if (bytedev_register(&tty->tty_cdev) != 0) {
       panic("Error registering tty as byte device\n");
     }
@@ -118,20 +123,18 @@ void tty_init() {
  * table for a tty.
  */
 tty_device_t *tty_create(tty_driver_t *driver, int id) {
+  dbg(DBG_TERM, "tty_create\n");
   KASSERT(driver);
   tty_device_t *td = kmalloc(sizeof(tty_device_t));
-  KASSERT(td);
+  if (!td) return td;
 
   td->tty_id = id;
   td->tty_driver = driver;
-  td->tty_ldisc = n_tty_create();
   KASSERT(td->tty_ldisc);
 
   td->tty_cdev.cd_id = MKDEVID(TTY_MAJOR, id);
   list_link_init(&td->tty_cdev.cd_link);
-  // TODO: check these functions
-  td->tty_cdev.cd_ops->write = tty_write;
-  td->tty_cdev.cd_ops->read = tty_read;
+  td->tty_cdev.cd_ops = &tty_bytedev_ops;
 
   return td;
 }
@@ -150,6 +153,7 @@ tty_device_t *tty_create(tty_driver_t *driver, int id) {
  * tty_echo() function.
  */
 void tty_global_driver_callback(void *arg, char c) {
+  dbg(DBG_TERM, "\n");
   tty_device_t *td = arg;
   const char *out = td->tty_ldisc->ld_ops->receive_char(td->tty_ldisc, c);
   tty_echo(td->tty_driver, out);
@@ -161,6 +165,7 @@ void tty_global_driver_callback(void *arg, char c) {
  * each character of the string 'out'.
  */
 void tty_echo(tty_driver_t *driver, const char *out) {
+  dbg(DBG_TERM, "\n");
   for (int i = 0; out[i] != '\0'; ++i)
     driver->ttd_ops->provide_char(driver, out[i]);
 }
@@ -171,9 +176,10 @@ void tty_echo(tty_driver_t *driver, const char *out) {
  * modifying the input buffer.
  */
 int tty_read(bytedev_t *dev, int offset, void *buf, int count) {
+  dbg(DBG_TERM, "\n");
   tty_device_t *td = bd_to_tty(dev);
   void *data = td->tty_driver->ttd_ops->block_io(td->tty_driver);
-  int out = td->tty_ldisc->ld_ops->read(td->tty_ldisc, (char *)buf+offset, count);
+  int out = td->tty_ldisc->ld_ops->read(td->tty_ldisc, (char *)buf, count);
   td->tty_driver->ttd_ops->unblock_io(td->tty_driver, data);
   return out;
 }
@@ -187,11 +193,12 @@ int tty_read(bytedev_t *dev, int offset, void *buf, int count) {
  * _NOT_ the number of bytes written out to the driver.
  */
 int tty_write(bytedev_t *dev, int offset, const void *buf, int count) {
+  dbg(DBG_TERM, "\n");
   tty_device_t *td = bd_to_tty(dev);
   void *data = td->tty_driver->ttd_ops->block_io(td->tty_driver);
   int written = 0;
   for (int i = 0; i < count; ++i) {
-    const char *out = td->tty_ldisc->ld_ops->process_char(td->tty_ldisc, *((char *)buf+offset+i));
+    const char *out = td->tty_ldisc->ld_ops->process_char(td->tty_ldisc, *((char *)buf+i));
     if (out[0])
       td->tty_driver->ttd_ops->provide_char(td->tty_driver, out[0]);
     kfree((void *)out);

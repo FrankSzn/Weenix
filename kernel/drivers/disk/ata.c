@@ -489,7 +489,7 @@ static int ata_write(blockdev_t *bdev, const char *data, blocknum_t blocknum,
 static int ata_do_operation(ata_disk_t *adisk, char *data, blocknum_t blocknum,
                             int write) {
   NOT_YET_IMPLEMENTED("DRIVERS: ata_do_operation");
-
+/*
   kmutex_lock(&adisk->ata_mutex);
   int old_ipl = intr_getipl();
   intr_setipl(INTR_DISK_SECONDARY);
@@ -516,6 +516,7 @@ static int ata_do_operation(ata_disk_t *adisk, char *data, blocknum_t blocknum,
   intr_setipl(old_ipl);
   kmutex_unlock(&adisk->ata_mutex);
   return -1*error;
+  */
 }
 
 /**
