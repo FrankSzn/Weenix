@@ -1,4 +1,4 @@
-cscope 15 $HOME/weenix               0000995680
+cscope 15 $HOME/weenix               0000996934
 	@kernel/api/access.c
 
 1 
@@ -10011,15 +10011,47 @@ blocknum
 cou¡
 ) {
 
-375 
-	`NOT_YET_IMPLEMENTED
-("DRIVERS:áta_read");
+375 
+°©us
+ = 0;
 
-378 
+376 
+i
+ = 0; i < 
+cou¡
+ * 
+BLOCK_SIZE
+; i += BLOCK_SIZE) {
+
+377 
+°©us
+ = 
+	`©a_do_›î©i⁄
+(
+	`bd_to_©a
+(
+bdev
+), 
+d©a
++
+i
+, 
+blocknum
+, 0);
+
+378 i‡(
+°©us
+)
+
+381  
+°©us
+;
+
+382 
 	}
 }
 
-390 
+394 
 	$©a_wrôe
 (
 blockdev_t
@@ -10033,15 +10065,15 @@ blocknum_t
 blocknum
 ,
 
-391 
+395 
 cou¡
 ) {
 
-392 
-ªt
+396 
+°©us
  = 0;
 
-393 
+397 
 i
  = 0; i < 
 cou¡
@@ -10049,39 +10081,35 @@ cou¡
 BLOCK_SIZE
 ; i += BLOCK_SIZE) {
 
-394 
-ªt
+398 
+°©us
  = 
 	`©a_do_›î©i⁄
 (
 	`bd_to_©a
 (
 bdev
-), 
+), (*)
 d©a
-[
++
 i
-], 
+, 
 blocknum
 , 1);
 
-395 i‡(!
-ªt
+399 i‡(
+°©us
 )
 
-396  
-ªt
+402  
+°©us
 ;
 
-398  
-ªt
-;
-
-399 
+403 
 	}
 }
 
-489 
+493 
 	$©a_do_›î©i⁄
 (
 ©a_disk_t
@@ -10095,19 +10123,215 @@ blocknum_t
 blocknum
 ,
 
-490 
+494 
 wrôe
 ) {
 
-491 
-	`NOT_YET_IMPLEMENTED
-("DRIVERS:áta_do_operation");
+495 
+	`kmuãx_lock
+(&
+adisk
+->
+©a_muãx
+);
 
-520 
+496 
+ﬁd_ùl
+ = 
+	`öå_gëùl
+();
+
+497 
+	`öå_£tùl
+(
+INTR_DISK_SECONDARY
+);
+
+498 
+	`dma_lﬂd
+(
+adisk
+->
+©a_ch™√l
+, 
+d©a
+, 
+BLOCK_SIZE
+);
+
+499 
+	`©a_outb_ªg
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_REG_SECCOUNT0
+, 1);
+
+500 
+	`©a_outb_ªg
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_REG_LBA0
+, 
+blocknum
+ & 0xFF);
+
+501 
+	`©a_outb_ªg
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_REG_LBA1
+, (
+blocknum
+ >> 8) & 0xFF);
+
+502 
+	`©a_outb_ªg
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_REG_LBA2
+, (
+blocknum
+ >> 16) & 0xFF);
+
+503 i‡(
+wrôe
+)
+
+504 
+	`©a_outb_ªg
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_REG_COMMAND
+, 
+ATA_CMD_WRITE_DMA
+);
+
+506 
+	`©a_outb_ªg
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_REG_COMMAND
+, 
+ATA_CMD_READ_DMA
+);
+
+507 
+	`©a_∑u£
+(
+adisk
+->
+©a_ch™√l
+);
+
+508 
+	`dma_°¨t
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_CHANNELS
+[adisk->©a_ch™√l].
+©ac_busma°î
+, 
+wrôe
+);
+
+509 
+	`sched_¶ìp_⁄
+(&
+adisk
+->
+©a_waôq
+);
+
+510 
+°©us
+ = 
+	`©a_öb_ªg
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_REG_STATUS
+);
+
+511 
+îr‹
+ = 0;
+
+512 i‡(
+°©us
+ & 
+ATA_SR_ERR
+) {
+
+513 
+îr‹
+ = 
+	`©a_öb_ªg
+(
+adisk
+->
+©a_ch™√l
+, 
+ATA_REG_ERROR
+);
+
+514 
+	`dma_ª£t
+(
+ATA_CHANNELS
+[
+adisk
+->
+©a_ch™√l
+].
+©ac_busma°î
+);
+
+516 
+	`öå_£tùl
+(
+ﬁd_ùl
+);
+
+517 
+	`kmuãx_u∆ock
+(&
+adisk
+->
+©a_muãx
+);
+
+518  -1*
+îr‹
+;
+
+519 
 	}
 }
 
-530 
+529 
 	$©a_öå
 (
 ªgs_t
@@ -10117,7 +10341,7 @@ wrôe
 ¨g
 ) {
 
-531 
+530 
 	`sched_wakeup_⁄
 (&((
 ©a_disk_t
@@ -10127,11 +10351,11 @@ wrôe
 ©a_waôq
 );
 
-532 
+531 
 	}
 }
 
-538 
+537 
 uöt16_t
  
 	$©a_£tup_busma°î
@@ -10141,7 +10365,7 @@ uöt16_t
 adisk
 ) {
 
-540 
+539 
 pcidev_t
  *
 ide
@@ -10149,17 +10373,17 @@ ide
 	`pci_lookup
 (0x01, 0x01, 0x80);
 
-542 i‡(
+541 i‡(
 ide
  =
 NULL
 ) {
 
-543 
+542 
 	`∑nic
 ("CouldÇot find ide device\n");
 
-546 
+545 
 uöt32_t
  
 comm™d
@@ -10171,15 +10395,15 @@ ide
 PCI_COMMAND
 , 2);
 
-548 
+547 
 comm™d
  |= 0x4;
 
-550 
+549 
 comm™d
  &= 0xfdff;
 
-552 
+551 
 	`pci_wrôe_c⁄fig
 (
 ide
@@ -10189,13 +10413,13 @@ PCI_COMMAND
 comm™d
 , 2);
 
-554 
+553 
 uöt32_t
  
 busma°î_ba£
  =
 
-555 
+554 
 ide
 ->
 pci_b¨
@@ -10207,27 +10431,27 @@ adisk
 ©a_ch™√l
  * 8);
 
-557 i‡(
+556 i‡(
 busma°î_ba£
  == 0) {
 
-558 
+557 
 	`∑nic
 ("No valid busmasteringáddress\n");
 
-561 
+560 
 	`KASSERT
 (
 busma°î_ba£
  != 0 &&
 
-564  (
+563  (
 uöt16_t
 )
 busma°î_ba£
 ;
 
-565 
+564 
 	}
 }
 
@@ -10644,26 +10868,34 @@ NULL
 () {
 
 35 
-	`NOT_YET_IMPLEMENTED
-("DRIVERS: memdevs_init");
+byãdev_t
+ *
+nuŒ
+ = 
+	`kmÆloc
+((bytedev_t));
 
 36 
 byãdev_t
  *
-nuŒ
+zîo
  = 
 	`kmÆloc
 ((bytedev_t));
 
 37 
-byãdev_t
- *
-zîo
- = 
-	`kmÆloc
-((bytedev_t));
+	`KASSERT
+(
+nuŒ
+);
 
 38 
+	`KASSERT
+(
+zîo
+);
+
+39 
 	`li°_lök_öô
 (&
 nuŒ
@@ -10671,7 +10903,7 @@ nuŒ
 cd_lök
 );
 
-39 
+40 
 	`li°_lök_öô
 (&
 zîo
@@ -10679,7 +10911,7 @@ zîo
 cd_lök
 );
 
-40 
+41 
 nuŒ
 ->
 cd_›s
@@ -10687,7 +10919,7 @@ cd_›s
 nuŒ_dev_›s
 ;
 
-41 
+42 
 zîo
 ->
 cd_›s
@@ -10695,7 +10927,7 @@ cd_›s
 zîo_dev_›s
 ;
 
-42 
+43 
 nuŒ
 ->
 cd_id
@@ -10703,7 +10935,7 @@ cd_id
 	`MKDEVID
 (1,0);
 
-43 
+44 
 zîo
 ->
 cd_id
@@ -10711,7 +10943,7 @@ cd_id
 	`MKDEVID
 (1,1);
 
-44 
+45 
 	`KASSERT
 (!
 	`byãdev_ªgi°î
@@ -10719,7 +10951,7 @@ cd_id
 nuŒ
 ));
 
-45 
+46 
 	`KASSERT
 (!
 	`byãdev_ªgi°î
@@ -10727,11 +10959,11 @@ nuŒ
 zîo
 ));
 
-46 
+47 
 	}
 }
 
-58 
+59 
 	$nuŒ_ªad
 (
 byãdev_t
@@ -10745,11 +10977,11 @@ buf
 cou¡
 ) {
 
-60 
+61 
 	}
 }
 
-73 
+74 
 	$nuŒ_wrôe
 (
 byãdev_t
@@ -10763,15 +10995,15 @@ buf
 cou¡
 ) {
 
-74  
+75  
 cou¡
 ;
 
-75 
+76 
 	}
 }
 
-88 
+89 
 	$zîo_ªad
 (
 byãdev_t
@@ -10785,19 +11017,19 @@ buf
 cou¡
 ) {
 
-89 *
+90 *
 buff
  = 
 buf
 ;
 
-90 
+91 
 i
  = 0; i < 
 cou¡
 ; ++i)
 
-91 
+92 
 buff
 [
 off£t
@@ -10805,15 +11037,15 @@ off£t
 i
 ] = 0;
 
-92  
+93  
 cou¡
 ;
 
-93 
+94 
 	}
 }
 
-98 
+99 
 	$zîo_mm≠
 (
 vnode_t
@@ -10829,11 +11061,11 @@ mmobj_t
 ªt
 ) {
 
-99 
+100 
 	`NOT_YET_IMPLEMENTED
 ("VM: zero_mmap");
 
-101 
+102 
 	}
 }
 

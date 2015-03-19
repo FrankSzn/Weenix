@@ -32,9 +32,10 @@ bytedev_ops_t zero_dev_ops = {zero_read, null_write, zero_mmap,
  * bytedev_t's for null and zero, fill them in, and register them.
  */
 void memdevs_init() { 
-  NOT_YET_IMPLEMENTED("DRIVERS: memdevs_init");
   bytedev_t *null = kmalloc(sizeof(bytedev_t));
   bytedev_t *zero = kmalloc(sizeof(bytedev_t));
+  KASSERT(null);
+  KASSERT(zero);
   list_link_init(&null->cd_link);
   list_link_init(&zero->cd_link);
   null->cd_ops = &null_dev_ops;
