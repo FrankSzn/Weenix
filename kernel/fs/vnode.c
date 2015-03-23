@@ -416,8 +416,9 @@ static void init_special_vnode(vnode_t *vn) {
  */
 static int special_file_read(vnode_t *file, off_t offset, void *buf,
                              size_t count) {
-  NOT_YET_IMPLEMENTED("VFS: special_file_read");
-  return 0;
+  if (file->vn_bdev)
+      return -ENOTSUP;
+  return file->vn_cdev->cd_ops->read(file->vn_cdev, offset, buf, count);
 }
 
 /*
@@ -428,8 +429,9 @@ static int special_file_read(vnode_t *file, off_t offset, void *buf,
  */
 static int special_file_write(vnode_t *file, off_t offset, const void *buf,
                               size_t count) {
-  NOT_YET_IMPLEMENTED("VFS: special_file_write");
-  return 0;
+  if (file->vn_bdev)
+      return -ENOTSUP;
+  return file->vn_cdev->cd_ops->write(file->vn_cdev, offset, buf, count);
 }
 
 /* Memory map the special file represented by <file>. All of the

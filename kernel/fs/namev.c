@@ -22,8 +22,9 @@
  * Note: returns with the vnode refcount on *result incremented.
  */
 int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
-  NOT_YET_IMPLEMENTED("VFS: lookup");
-  return 0;
+  if (!dir->vn_ops->lookup)
+    return -ENOTDIR;
+  return dir->vn_ops->lookup(dir, name, len, result);
 }
 
 /* When successful this function returns data in the following "out"-arguments:
@@ -46,21 +47,73 @@ int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
  */
 int dir_namev(const char *pathname, size_t *namelen, const char **name,
               vnode_t *base, vnode_t **res_vnode) {
-  NOT_YET_IMPLEMENTED("VFS: dir_namev");
+  // TODO handle trailing '/'
+  if (strlen(pathname) > MAXPATHLEN)
+    return -ENAMETOOLONG;
+  // Set base
+  if (!base)
+    base = curproc->p_cwd;
+  size_t i = 0;
+  if (pathname && *pathname == '/'){
+    base = vfs_root_vn;
+    ++i; // Skip leading '/'
+  }
+  size_t j;
+  for (; pathname[i]; i = j+1) {
+    // Advance to next '/' or end
+    for (j = 0; pathname[i+j] && pathname[i+j] != '/'; ++j);
+    if (pathname[i+j]) { // Not the end of the path
+      vnode_t *result;
+      int status = lookup(base, pathname+i, j, &result);
+      vput(base);
+      if (status) return status;
+      base = result;
+    } else {
+      if (namelen) *namelen = j;
+      if (name) *name = pathname + i;
+      if (res_vnode) *res_vnode = base;
+      else vput(base);
+      break;
+    }
+  }
   return 0;
 }
 
 /* This returns in res_vnode the vnode requested by the other parameters.
  * It makes use of dir_namev and lookup to find the specified vnode (if it
  * exists).  flag is right out of the parameters to open(2); see
- * <weenix/fnctl.h>.  If the O_CREAT flag is specified, and the file does
+ * <weenix/fcntl.h>.  If the O_CREAT flag is specified, and the file does
  * not exist call create() in the parent directory vnode.
  *
  * Note: Increments vnode refcount on *res_vnode.
  */
 int open_namev(const char *pathname, int flag, vnode_t **res_vnode,
                vnode_t *base) {
-  NOT_YET_IMPLEMENTED("VFS: open_namev");
+ /*      o ENOENT
+ *        O_CREAT is not set and the named file does not exist.  Or, a
+ *        directory component in pathname does not exist.
+ *      o EISDIR
+ *        pathname refers to a directory and the access requested involved
+ *        writing (that is, O_WRONLY or O_RDWR is set).*/
+  vnode_t *dir;
+  size_t namelen;
+  const char *name;
+  int status = dir_namev(pathname, &namelen, &name, base, &dir);
+  if (status) return status;
+  vnode_t *result;
+  status = lookup(dir, name, namelen, &result);
+  if (status) {
+    vput(dir);
+    return status;
+  }
+  if (!result) {
+    if (!(flag & O_CREAT)) {
+      vput(dir);
+      return -ENOENT;
+    }
+  dir->vn_ops->create(dir, name, namelen, &result);
+  }
+  vput(dir);
   return 0;
 }
 

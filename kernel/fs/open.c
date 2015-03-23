@@ -70,6 +70,33 @@ int get_empty_fd(proc_t *p) {
  */
 
 int do_open(const char *filename, int oflags) {
-  NOT_YET_IMPLEMENTED("VFS: do_open");
-  return -1;
+  int new_fd = get_empty_fd(curproc);
+  if (new_fd == -EMFILE)
+    return -EMFILE;
+  file_t *f = fget(new_fd);
+  if (!f) return -ENOMEM;
+  curproc->p_files[new_fd] = f;
+  if (oflags & O_RDONLY)
+    f->f_mode = FMODE_READ; 
+  else if (oflags & O_WRONLY)
+    f->f_mode = FMODE_WRITE;
+  else if (oflags & O_RDWR)
+    f->f_mode = FMODE_WRITE ^ FMODE_READ;
+  else {
+    fput(f);
+    curproc->p_files[new_fd] = NULL;
+    return -EINVAL;
+  }
+  if (oflags& O_APPEND)
+    f->f_mode ^= FMODE_APPEND;
+  vnode_t *result;
+  int status = open_namev(filename, oflags, &result, NULL);
+  if (status) {
+    fput(f);
+    curproc->p_files[new_fd] = NULL;
+    return status;
+  }
+  f->f_vnode = result;
+  return new_fd;
 }
+
