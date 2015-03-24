@@ -35,11 +35,11 @@ import ycm_core
 # compilation database set (by default, one is not set).
 # CHANGE THIS LIST OF FLAGS. YES, THIS IS THE DROID YOU HAVE BEEN LOOKING FOR.
 flags = [
-#'-Wall',
-#'-Wextra',
+'-Wall',
+'-Wextra',
 #'-Werror',
 #'-Wpedantic',
-'-Weverything',
+#'-Weverything',
 #'-DNDEBUG',
 '-D_GNU_SOURCE', 
 '-D__KERNEL__',
@@ -72,6 +72,8 @@ flags = [
 '/usr/include',
 '-isystem',
 '/usr/local/include',
+'-D __DRIVERS__',
+'-D __VFS__'
 ]
 
 

@@ -207,3 +207,4 @@ int tty_write(bytedev_t *dev, int offset, const void *buf, int count) {
   td->tty_driver->ttd_ops->unblock_io(td->tty_driver, data);
   return written;
 }
+

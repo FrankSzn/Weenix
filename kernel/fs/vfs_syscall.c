@@ -111,7 +111,10 @@ int do_dup(int fd) {
   file_t *f = fget(fd);
   if (!f) return -EBADF;
   int new_fd = get_empty_fd(curproc);
-  if (new_fd == -EMFILE) return -EMFILE;
+  if (new_fd == -EMFILE) {
+    fput(f);
+    return -EMFILE;
+  }
   curproc->p_files[new_fd] = f;
   return new_fd;
 }
@@ -126,9 +129,12 @@ int do_dup(int fd) {
  *        range for file descriptors.
  */
 int do_dup2(int ofd, int nfd) {
+  if (ofd == nfd) return 0;
   file_t *f = fget(ofd);
-  if (!f || nfd < 0 || nfd >= NFILES)
+  if (!f || nfd < 0 || nfd >= NFILES) {
+    fput(f);
     return -EBADF;
+  }
   if (curproc->p_files[nfd])
     do_close(nfd);
   curproc->p_files[nfd] = f;
@@ -161,6 +167,7 @@ int do_dup2(int ofd, int nfd) {
  *        A component of path was too long.
  */
 int do_mknod(const char *path, int mode, unsigned devid) {
+  dbg(DBG_VFS, "\n");
   if (mode != S_IFCHR && mode != S_IFBLK)
     return -EINVAL;
   size_t namelen;
@@ -168,9 +175,11 @@ int do_mknod(const char *path, int mode, unsigned devid) {
   vnode_t *dir;
   int status = dir_namev(path, &namelen, &name, NULL, &dir);
   if (status) return status;
-  vnode_t *new_vnode;
+
+  // Check if already exists
+  vnode_t *new_vnode = NULL;
   status = lookup(dir, name, namelen, &new_vnode);
-  if (status) {
+  if (status !=-ENOENT) {
     vput(dir);
     return status;
   }
@@ -179,6 +188,7 @@ int do_mknod(const char *path, int mode, unsigned devid) {
     vput(new_vnode);
     return -EEXIST;
   }
+  dbg(DBG_VFS, "making node: %s\n", path);
   status = dir->vn_ops->mknod(dir, name, namelen, mode, devid);
   vput(dir);
   return status;
@@ -199,22 +209,25 @@ int do_mknod(const char *path, int mode, unsigned devid) {
  *        A component of path was too long.
  */
 int do_mkdir(const char *path) {
-  vnode_t *res;
+  vnode_t *dir;
   size_t namelen;
   const char *name;
-  int ret_code = dir_namev(path, &namelen, &name, NULL, &res);
-  if (!ret_code)
+  int ret_code = dir_namev(path, &namelen, &name, NULL, &dir);
+  if (ret_code)
     return ret_code;
 
   // Check if already exists
-  vnode_t *result;
-  ret_code = lookup(res, name, namelen, &result);
+  vnode_t *result = NULL;
+  ret_code = lookup(dir, name, namelen, &result);
   if (result) {
+    vput(dir);
     vput(result);
     return -EEXIST;
   }
 
-  return res->vn_ops->mkdir(res, name, namelen);
+  ret_code = dir->vn_ops->mkdir(dir, name, namelen);
+  vput(dir);
+  return ret_code;
 }
 
 /* Use dir_namev() to find the vnode of the directory containing the dir to be
@@ -238,12 +251,12 @@ int do_mkdir(const char *path) {
 int do_rmdir(const char *path) {
   size_t namelen;
   const char *name;
-  vnode_t *res;
-  int result = dir_namev(path, &namelen, &name, NULL, &res);
-  if (result) return result;
-  result = res->vn_ops->rmdir(res, name, namelen);
-  vput(res);
-  return result;
+  vnode_t *dir;
+  int status = dir_namev(path, &namelen, &name, NULL, &dir);
+  if (status) return status;
+  status = dir->vn_ops->rmdir(dir, name, namelen);
+  vput(dir);
+  return status;
 }
 
 /*
@@ -263,19 +276,19 @@ int do_unlink(const char *path) {
   size_t namelen;
   const char *name;
   vnode_t *dir;
-  int result = dir_namev(path, &namelen, &name, NULL, &dir);
-  if (result) return result;
+  int status = dir_namev(path, &namelen, &name, NULL, &dir);
+  if (status) return status;
   vnode_t *res;
-  result = lookup(dir, name, namelen, &res);
+  status = lookup(dir, name, namelen, &res);
   if (res->vn_mode == S_IFDIR) {
     vput(dir);
     vput(res);
     return -EISDIR;
   }
-  result = res->vn_ops->unlink(res, name, namelen);
+  status = res->vn_ops->unlink(res, name, namelen);
   vput(dir);
   vput(res);
-  return result;
+  return status;
 }
 
 /* To link:
@@ -301,8 +314,8 @@ int do_unlink(const char *path) {
  */
 int do_link(const char *from, const char *to) {
   vnode_t *res_from;
-  int result = open_namev(from, O_RDWR, &res_from, NULL);
-  if (result) return result;
+  int status = open_namev(from, O_RDWR, &res_from, NULL);
+  if (status) return status;
   if (res_from->vn_mode == S_IFDIR) {
     vput(res_from);
     return -EPERM;
@@ -311,19 +324,19 @@ int do_link(const char *from, const char *to) {
   size_t namelen;
   const char *name;
   vnode_t *res_to;
-  result = dir_namev(to, &namelen, &name, NULL, &res_to);
-  if (result) {
+  status = dir_namev(to, &namelen, &name, NULL, &res_to);
+  if (status) {
     vput(res_from);
-    return result;
+    return status;
   }
   if (res_to) {
     vput(res_from);
     vput(res_to); 
     return -EEXIST;
   }
-  result = res_to->vn_ops->link(res_from, res_to, name, namelen);
+  status = res_to->vn_ops->link(res_from, res_to, name, namelen);
   vput(res_from);
-  return result;
+  return status;
 }
 
 /*      o link newname to oldname
@@ -355,8 +368,7 @@ int do_rename(const char *oldname, const char *newname) {
 int do_chdir(const char *path) {
   vnode_t *res; 
   int result = open_namev(path, O_RDONLY, &res, NULL);
-  if (result)
-    return result;
+  if (result) return result;
   vput(curproc->p_cwd);
   curproc->p_cwd = res;
   return 0;
@@ -380,9 +392,9 @@ int do_chdir(const char *path) {
 int do_getdent(int fd, struct dirent *dirp) {
   file_t *f = fget(fd);
   if (!f) return -EBADF;
-  if (f->f_vnode->vn_mode != S_IFDIR)
-    return -ENOTDIR;
+  if (!(f->f_vnode->vn_ops->readdir)) return -ENOTDIR;
   int result = f->f_vnode->vn_ops->readdir(f->f_vnode, 0, dirp);
+  f->f_pos += result;
   fput(f);
   return result;
 }
@@ -434,14 +446,11 @@ int do_lseek(int fd, int offset, int whence) {
  */
 int do_stat(const char *path, struct stat *buf) {
   struct vnode *res;
-  if (strlen(path) > MAXPATHLEN)
-    return -ENAMETOOLONG;
-  open_namev(path, O_RDONLY, &res, NULL);
-  if (!res)
-    return -ENOENT;
-  int result = res->vn_ops->stat(res, buf);
+  int status = open_namev(path, O_RDONLY, &res, NULL);
+  if (!status) return status;
+  status = res->vn_ops->stat(res, buf);
   vput(res);
-  return result;
+  return status;
 }
 
 #ifdef __MOUNTING__

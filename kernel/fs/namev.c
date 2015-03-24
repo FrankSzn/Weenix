@@ -22,8 +22,11 @@
  * Note: returns with the vnode refcount on *result incremented.
  */
 int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
-  if (!dir->vn_ops->lookup)
+  dbg(DBG_VFS, "Looking up: %s, length: %d\n", name, len);
+  if (!dir->vn_ops->lookup) {
+    dbg(DBG_VFS, "not a directory!\n");
     return -ENOTDIR;
+  }
   return dir->vn_ops->lookup(dir, name, len, result);
 }
 
@@ -47,6 +50,7 @@ int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
  */
 int dir_namev(const char *pathname, size_t *namelen, const char **name,
               vnode_t *base, vnode_t **res_vnode) {
+  dbg(DBG_VFS, "\n");
   // TODO handle trailing '/'
   if (strlen(pathname) > MAXPATHLEN)
     return -ENAMETOOLONG;
@@ -58,17 +62,21 @@ int dir_namev(const char *pathname, size_t *namelen, const char **name,
     base = vfs_root_vn;
     ++i; // Skip leading '/'
   }
+  vref(base);
   size_t j;
-  for (; pathname[i]; i = j+1) {
+  for (; pathname[i]; i += j+1) {
     // Advance to next '/' or end
     for (j = 0; pathname[i+j] && pathname[i+j] != '/'; ++j);
     if (pathname[i+j]) { // Not the end of the path
       vnode_t *result;
       int status = lookup(base, pathname+i, j, &result);
       vput(base);
-      if (status) return status;
+      if (status) {
+        return status;
+      }
       base = result;
     } else {
+      // Set namelen, name, res_vnode
       if (namelen) *namelen = j;
       if (name) *name = pathname + i;
       if (res_vnode) *res_vnode = base;
@@ -89,29 +97,35 @@ int dir_namev(const char *pathname, size_t *namelen, const char **name,
  */
 int open_namev(const char *pathname, int flag, vnode_t **res_vnode,
                vnode_t *base) {
- /*      o ENOENT
- *        O_CREAT is not set and the named file does not exist.  Or, a
- *        directory component in pathname does not exist.
- *      o EISDIR
- *        pathname refers to a directory and the access requested involved
- *        writing (that is, O_WRONLY or O_RDWR is set).*/
+  dbg(DBG_VFS, "\n");
   vnode_t *dir;
   size_t namelen;
   const char *name;
   int status = dir_namev(pathname, &namelen, &name, base, &dir);
-  if (status) return status;
-  vnode_t *result;
+  if (status) {
+    dbg(DBG_VFS, "error: %d\n", status);
+    return status;
+  }
+  vnode_t *result = NULL;
   status = lookup(dir, name, namelen, &result);
   if (status) {
+    dbg(DBG_VFS, "\n");
     vput(dir);
     return status;
   }
   if (!result) {
+    dbg(DBG_VFS, "Node not found\n");
     if (!(flag & O_CREAT)) {
       vput(dir);
       return -ENOENT;
     }
-  dir->vn_ops->create(dir, name, namelen, &result);
+    dir->vn_ops->create(dir, name, namelen, &result);
+  } else {
+    dbg(DBG_VFS, "Node found\n");
+    if (res_vnode)
+      *res_vnode = result;
+    else
+      vput(result);
   }
   vput(dir);
   return 0;

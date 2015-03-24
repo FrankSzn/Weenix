@@ -110,8 +110,11 @@ proc_t *proc_create(char *name) {
 
   new_proc->p_pagedir = pt_create_pagedir();
 
+  for (int i = 0; i < NFILES; ++i)
+    new_proc->p_files[i] = NULL; // open files
+  new_proc->p_cwd = vfs_root_vn; // current working dir 
+
   // Fields unset:
-  // /* VFS-related: */
   // /* VM */
 
   dbg(DBG_INIT, "returning proc %s\n", name);

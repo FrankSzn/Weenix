@@ -492,9 +492,11 @@ static int ata_write(blockdev_t *bdev, const char *data, blocknum_t blocknum,
  */
 static int ata_do_operation(ata_disk_t *adisk, char *data, blocknum_t blocknum,
                             int write) {
-  kmutex_lock(&adisk->ata_mutex);
+  dbg(DBG_DISK, "blocknum: %d\n", blocknum);
   int old_ipl = intr_getipl();
   intr_setipl(INTR_DISK_SECONDARY);
+  kmutex_lock(&adisk->ata_mutex);
+  dbg(DBG_DISK, "acquired mutex\n");
   dma_load(adisk->ata_channel, data, BLOCK_SIZE);
   
   uint32_t secnum = blocknum * adisk->ata_sectors_per_block;
@@ -515,8 +517,8 @@ static int ata_do_operation(ata_disk_t *adisk, char *data, blocknum_t blocknum,
     int error = ata_inb_reg(adisk->ata_channel, ATA_REG_ERROR);
     dma_reset(ATA_CHANNELS[adisk->ata_channel].atac_busmaster);
   }
-  intr_setipl(old_ipl);
   kmutex_unlock(&adisk->ata_mutex);
+  intr_setipl(old_ipl);
   return -1*error;
 }
 

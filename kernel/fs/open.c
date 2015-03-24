@@ -70,28 +70,34 @@ int get_empty_fd(proc_t *p) {
  */
 
 int do_open(const char *filename, int oflags) {
+  dbg(DBG_VFS, "flags: %d\n", oflags);
   int new_fd = get_empty_fd(curproc);
   if (new_fd == -EMFILE)
     return -EMFILE;
-  file_t *f = fget(new_fd);
+  file_t *f = fget(-1);
   if (!f) return -ENOMEM;
   curproc->p_files[new_fd] = f;
+
+  // Set file mode
   if (oflags & O_RDONLY)
     f->f_mode = FMODE_READ; 
   else if (oflags & O_WRONLY)
     f->f_mode = FMODE_WRITE;
-  else if (oflags & O_RDWR)
-    f->f_mode = FMODE_WRITE ^ FMODE_READ;
-  else {
+  else if (oflags & O_RDWR) {
+    dbg(DBG_VFS, "\n");
+    f->f_mode = FMODE_WRITE | FMODE_READ;
+  } else {
     fput(f);
     curproc->p_files[new_fd] = NULL;
     return -EINVAL;
   }
   if (oflags& O_APPEND)
-    f->f_mode ^= FMODE_APPEND;
+    f->f_mode |= FMODE_APPEND;
+
   vnode_t *result;
   int status = open_namev(filename, oflags, &result, NULL);
   if (status) {
+    dbg(DBG_VFS, "couldn't open path\n");
     fput(f);
     curproc->p_files[new_fd] = NULL;
     return status;

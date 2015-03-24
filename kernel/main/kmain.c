@@ -44,6 +44,8 @@
 
 #include "test/kshell/kshell.h"
 
+#include "errno.h"
+
 GDB_DEFINE_HOOK(boot)
 GDB_DEFINE_HOOK(initialized)
 GDB_DEFINE_HOOK(shutdown)
@@ -55,6 +57,10 @@ static void *initproc_run(int arg1, void *arg2);
 static void hard_shutdown(void);
 
 static context_t bootstrap_context;
+
+int test_procs(kshell_t *ks, int argc, char **argv);
+int test_drivers(kshell_t *ks, int argc, char **argv);
+int test_vfs(kshell_t *ks, int argc, char **argv);
 
 /**
  * This is the first real C function ever called. It performs a lot of
@@ -130,7 +136,6 @@ static void *bootstrap(int arg1, void *arg2) {
   curproc = proc_create("idle");
   curthr = kthread_create(curproc, idleproc_run, arg1, arg2);
   curthr->kt_state = KT_RUN;
-  // sched_make_runnable(curthr);
   dbg(DBG_INIT, "switching to idle\n");
   context_make_active(&curthr->kt_ctx);
 
@@ -161,10 +166,19 @@ static void *idleproc_run(int arg1, void *arg2) {
 #ifdef __VFS__
 /* Once you have VFS remember to set the current working directory
  * of the idle and init processes */
+  initthr->kt_proc->p_cwd = vfs_root_vn;
+  curproc->p_cwd = vfs_root_vn;
 
 /* Here you need to make the null, zero, and tty devices using mknod */
 /* You can't do this until you have VFS, check the include/drivers/dev.h
  * file for macros with the device ID's you will need to pass to mknod */
+  do_mkdir("/dev");
+  do_mknod("/dev/null", S_IFCHR, MKDEVID(1,0));
+  do_mknod("/dev/zero", S_IFCHR, MKDEVID(1,1));
+  do_mknod("/dev/zero", S_IFCHR, MKDEVID(1,1));
+  do_mknod("/dev/tty0", S_IFCHR, MKDEVID(2,0));
+  do_mknod("/dev/tty1", S_IFCHR, MKDEVID(2,1));
+  do_mknod("/dev/sda", S_IFBLK, MKDEVID(1,0));
 #endif
 
   /* Finally, enable interrupts (we want to make sure interrupts
@@ -225,9 +239,23 @@ static kthread_t *initproc_create(void) {
   return kthread_create(init_p, initproc_run, 0, NULL);
 }
 
-void *do_nothing(int arg1, void *arg2) {
-  dbg_print("new process exiting\n");
+void *aquire_mutex(int arg1, void *arg2) {
+  for (int i = 0; i < 10; ++i) {
+    kmutex_lock((kmutex_t *) arg2);
+    dbg_print("Thread %d aquired mutex!\n", arg1);
+    kmutex_unlock((kmutex_t *) arg2);
+  }
   return NULL;
+}
+
+int fib(int n) {
+  if (n == 0) return 0;
+  if (n == 1) return 1;
+  return fib(n-1) + fib(n-2);
+}
+
+void *calc_fib(int arg1, void *arg2) {
+  return (void *) fib(arg1);
 }
 
 /**
@@ -244,34 +272,12 @@ void *do_nothing(int arg1, void *arg2) {
 static void *initproc_run(int arg1, void *arg2) {
   dbg(DBG_INIT, "init running\n");
 
-  dbg(DBG_INIT, "Creating test1 thread\n");
-  proc_t *proc1 = proc_create("test1");
-  kthread_t *thread1 = kthread_create(proc1, do_nothing, 0, NULL);
-  sched_make_runnable(thread1);
 
-  dbg(DBG_INIT, "Waiting on test1\n");
-  do_waitpid(proc1->p_pid, 0, NULL);
+  kshell_add_command("procs", &test_procs, "test procs");
+  kshell_add_command("drivers", &test_drivers, "test drivers");
 
-  dbg(DBG_INIT, "Creating four threads\n");
-  pid_t pids[4];
-  for (int i = 0; i < 4; ++i) {
-    dbg(DBG_INIT, "Creating thread %d\n", i);
-    proc_t *p = proc_create("test");
-    pids[i] = p->p_pid;
-    kthread_t *thread = kthread_create(p, do_nothing, 0, NULL);
-    sched_make_runnable(thread);
-  }
-  dbg(DBG_INIT, "Waiting on four threads");
-  for (int i = 3; i >= 0; --i) {
-    do_waitpid(pids[i], 0, NULL);
-  }
-
-  dbg(DBG_INIT, "Testing waitpid edge cases\n");
-  // Wait with no child processes
-  do_waitpid(-1, 0, NULL);
-  do_waitpid(1208312, 0, NULL);
-
-  //kshell_add_command("test1", test1, "tests something");
+  KASSERT(!open_namev("/dev/tty0", O_RDWR, NULL, NULL));
+  KASSERT(!open_namev("/dev/tty1", O_RDWR, NULL, NULL));
   int err = 0;
   kshell_t *ksh = kshell_create(0);
   KASSERT(ksh && "kshell_create failed");
@@ -282,6 +288,104 @@ static void *initproc_run(int arg1, void *arg2) {
 
   return NULL;
 }
+
+int test_procs(kshell_t *ks, int argc, char **argv) {
+  dbg(DBG_INIT, "Creating test1 thread\n");
+  proc_t *proc1 = proc_create("test1");
+  kthread_t *thread1 = kthread_create(proc1, &calc_fib, 10, NULL);
+  sched_make_runnable(thread1);
+
+  dbg(DBG_INIT, "Waiting on test1\n");
+  dbg_print("%d\n", do_waitpid(proc1->p_pid, 0, NULL));
+
+  dbg(DBG_INIT, "Creating threads\n");
+  const int nthreads = 100;
+  pid_t pids[nthreads];
+  kmutex_t km;
+  kmutex_init(&km);
+  for (int i = 0; i < nthreads; ++i) {
+    dbg(DBG_INIT, "Creating thread %d\n", i);
+    proc_t *p = proc_create("test");
+    pids[i] = p->p_pid;
+    kthread_t *thread = kthread_create(p, &aquire_mutex, i, &km);
+    sched_make_runnable(thread);
+  }
+  // Either proc_kill_all or wait them all
+  // proc_kill_all();
+  dbg(DBG_INIT, "Waiting on threads\n");
+  for (int i = nthreads - 1; i >= 0; --i) {
+    do_waitpid(pids[i], 0, NULL);
+  }
+
+  dbg(DBG_INIT, "Testing waitpid edge cases\n");
+  // Wait with no child processes
+  do_waitpid(-1, 0, NULL);
+  do_waitpid(1208312, 0, NULL);
+
+  // TODO: test several child processes terminating out of order
+
+  return 0;
+}
+
+void *run_echo(int argc, void *argv) {
+  dbg(DBG_TERM, "thread %d starting\n", argc);
+  int fd = do_open("/dev/tty0", O_RDWR);
+  char *buff[100];
+  for (int i = 0; i < 2; ++i) {
+    dbg(DBG_TERM, "thread %d reading\n", argc);
+    int read_count = do_read(fd, buff, 100);
+    dbg(DBG_TERM, "thread %d writing\n", argc);
+    do_write(fd, buff, read_count);
+  }
+  do_close(fd);
+  return NULL;
+}
+
+void *test_disk(int argc, void *argv) {
+  dbg(DBG_DISK, "thread %d writing block\n", argc);
+  blockdev_t *disk = blockdev_lookup(MKDEVID(1,0));
+  char *data = page_alloc();
+  data[0] = argc;
+  KASSERT(!disk->bd_ops->write_block(disk, data, argc, 1));
+  page_free(data);
+  dbg(DBG_DISK, "succesful write by thread %d\n", argc);
+  return NULL;
+}
+
+int test_drivers(kshell_t *ks, int argc, char **argv) {
+  dbg(DBG_TERM, "two threads reading/writing to tty0\n");
+  proc_t *p1 = proc_create("p1");
+  proc_t *p2 = proc_create("p2");
+  sched_make_runnable(kthread_create(p1, &run_echo, 1, NULL));
+  sched_make_runnable(kthread_create(p2, &run_echo, 2, NULL));
+  do_waitpid(-1, 0, 0);
+  do_waitpid(-1, 0, 0);
+  
+  // TODO: read and write more than terminal buffer size
+  
+  // multiple threads reading/writing to disk
+  dbg(DBG_DISK, "starting disk test\n");
+  const int ata_test_size = 5;
+  for (int i = 0; i < ata_test_size; ++i) {
+    char name[2];
+    name[0] = i + '0';
+    name[1] = '\0';
+    proc_t *p = proc_create((char *) &name);
+    sched_make_runnable(kthread_create(p, &test_disk, i, NULL));
+  }
+  while (-ECHILD != do_waitpid(-1, 0, NULL));
+  char *data = page_alloc();
+  blockdev_t *disk = blockdev_lookup(MKDEVID(1,0));
+  for (int i = 0; ata_test_size; i += BLOCK_SIZE) {
+    KASSERT(!disk->bd_ops->read_block(disk, data, 0, ata_test_size-1));
+    KASSERT(data[0] == i);
+  }
+  page_free(data);
+  dbg(DBG_DISK, "disk test passed!\n");
+
+  return 0;
+}
+
 
 /**
  * Clears all interrupts and halts, meaning that we will never run

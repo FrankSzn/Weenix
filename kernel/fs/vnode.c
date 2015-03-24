@@ -222,6 +222,7 @@ find:
 void vput(struct vnode *vn) {
   KASSERT(vn);
 
+  KASSERT(vn->vn_refcount);
   KASSERT(0 <= vn->vn_nrespages);
   KASSERT(vn->vn_nrespages < vn->vn_refcount);
 

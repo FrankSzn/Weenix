@@ -27,6 +27,7 @@ void kmutex_lock(kmutex_t *mtx) {
   KASSERT(mtx->km_holder != curthr);
   if (mtx->km_holder)
     sched_sleep_on(&mtx->km_waitq);
+  KASSERT(!mtx->km_holder);
   mtx->km_holder = curthr;
 }
 
@@ -60,6 +61,7 @@ int kmutex_lock_cancellable(kmutex_t *mtx) {
  */
 void kmutex_unlock(kmutex_t *mtx) {
   KASSERT(mtx->km_holder); // Make sure the mutex is locked
-  sched_wakeup_on(&mtx->km_waitq);
   mtx->km_holder = NULL;
+  sched_wakeup_on(&mtx->km_waitq);
 }
+

@@ -113,29 +113,36 @@ void n_tty_detach(tty_ldisc_t *ldisc, tty_device_t *tty) {
  * properly.
  */
 int n_tty_read(tty_ldisc_t *ldisc, void *buf, int len) {
-  dbg(DBG_TERM, "\n");
-
   KASSERT(len >= 0);
   n_tty_t *nt = ldisc_to_ntty(ldisc);
   kmutex_lock(&nt->rlock);
 
-  // TODO: ask mentor about this sleep
-  if (nt->rhead == nt->ckdtail)
+  // Wait for some data
+  while (nt->rhead == nt->ckdtail) {
+    kmutex_unlock(&nt->rlock);
+    // TODO: check sleep behavior
     sched_cancellable_sleep_on(&nt->rwaitq);
+    kmutex_lock(&nt->rlock);
+  }
 
   int read = 0;
   char *buff = buf;
+  // While rhead != cooked tail
   for (; nt->rhead != nt->ckdtail && len; ++(nt->rhead)) {
     buff[read] = *get_rhead(nt);
     --len;
     ++read;
     if (buff[read-1] == '\n' || 
         buff[read-1] == '\r' || 
-        buff[read-1] == 0x04) 
+        buff[read-1] == 0x04) {
+      ++(nt->rhead);
       break;
+    }
   }
    
   kmutex_unlock(&nt->rlock);
+  dbg(DBG_TERM, "rhead: %d, ckdtail: %d, rawtail: %d\n",
+      nt->rhead, nt->ckdtail, nt->rawtail);
   return read;
 }
 
@@ -172,7 +179,7 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
     return out_string;
   } else if (nt->rawtail + 1 != nt->rhead) {
     *get_rawtail(nt) = c;
-    ++nt->rawtail;
+    ++(nt->rawtail);
     dbg(DBG_TERM, "added %c, new rawtail %d\n", c, nt->rawtail);
     // TODO: ask mentor about EOF
     if (c == '\r' || c == '\n') { // New line
@@ -189,9 +196,14 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
  * The only special case is '\r' and '\n'.
  */
 const char *n_tty_process_char(tty_ldisc_t *ldisc, char c) {
-  dbg(DBG_TERM, "\n");
-  char * out_string = kmalloc(2);
+  char *out_string = kmalloc(2);
   KASSERT(out_string);
+  out_string[1] = '\0';
+  // TODO: ask mentor about this "special case"
+  //if (c == '\r' || c == '\n')
+  //  out_string[0] = '\0';
+  //else
   out_string[0] = c;
   return out_string;
 }
+
