@@ -70,7 +70,8 @@ int get_empty_fd(proc_t *p) {
  */
 
 int do_open(const char *filename, int oflags) {
-  dbg(DBG_VFS, "flags: %d\n", oflags);
+  dbg(DBG_VFS, "opening %s flags: 0x%x\n", filename, oflags);
+  // Get new fd and empty f struct
   int new_fd = get_empty_fd(curproc);
   if (new_fd == -EMFILE)
     return -EMFILE;
@@ -79,19 +80,19 @@ int do_open(const char *filename, int oflags) {
   curproc->p_files[new_fd] = f;
 
   // Set file mode
-  if (oflags & O_RDONLY)
+  if ((oflags & 3) == O_RDONLY) {
     f->f_mode = FMODE_READ; 
-  else if (oflags & O_WRONLY)
+  } else if ((oflags & 3) == O_WRONLY) {
     f->f_mode = FMODE_WRITE;
-  else if (oflags & O_RDWR) {
-    dbg(DBG_VFS, "\n");
+  } else if ((oflags & 3) == O_RDWR) {
     f->f_mode = FMODE_WRITE | FMODE_READ;
   } else {
+    dbg(DBG_VFS, "invalid flags\n");
     fput(f);
     curproc->p_files[new_fd] = NULL;
     return -EINVAL;
   }
-  if (oflags& O_APPEND)
+  if (oflags & O_APPEND)
     f->f_mode |= FMODE_APPEND;
 
   vnode_t *result;
@@ -101,6 +102,12 @@ int do_open(const char *filename, int oflags) {
     fput(f);
     curproc->p_files[new_fd] = NULL;
     return status;
+  }
+  KASSERT(result);
+  if (S_ISDIR(result->vn_mode) && (f->f_mode & FMODE_WRITE)) {
+    fput(f);
+    vput(result);
+    return -EISDIR;
   }
   f->f_vnode = result;
   return new_fd;

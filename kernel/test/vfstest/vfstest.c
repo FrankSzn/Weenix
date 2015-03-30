@@ -524,7 +524,7 @@ static void vfstest_fd(void) {
   syscall_success(lseek(fd2, 5, SEEK_SET));
   test_fpos(fd1, 5);
   test_fpos(fd2, 5);
-
+  syscall_success(close(fd2)); 
   syscall_success(chdir(".."));
 }
 

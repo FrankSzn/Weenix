@@ -112,6 +112,10 @@ proc_t *proc_create(char *name) {
 
   for (int i = 0; i < NFILES; ++i)
     new_proc->p_files[i] = NULL; // open files
+  if (vfs_root_vn) vref(vfs_root_vn);
+  else {
+    dbg(DBG_VFS, "proc %s unable to vput\n", name);
+  }
   new_proc->p_cwd = vfs_root_vn; // current working dir 
 
   // Fields unset:
@@ -199,6 +203,7 @@ void proc_kill(proc_t *p, int status) {
  * In Weenix, this is only called by sys_halt.
  */
 void proc_kill_all() {
+  // TODO: fix this function
   list_link_t *link;
   list_t *idle_children = &proc_lookup(PID_IDLE)->p_children;
   for (link = _proc_list.l_next; link != &_proc_list; link = link->l_next) {

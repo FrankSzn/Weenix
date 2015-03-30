@@ -40,8 +40,7 @@ ksyscall(close, (int fd), (fd))
     ksyscall(open, (const char *filename, int flags), (filename, flags))
 #define ksys_exit do_exit
 
-    /* Kill me now */
-    int ksys_getdents(int fd, struct dirent *dirp, unsigned int count) {
+int ksys_getdents(int fd, struct dirent *dirp, unsigned int count) {
   size_t numbytesread = 0;
   int nbr = 0;
   dirent_t tempdirent;

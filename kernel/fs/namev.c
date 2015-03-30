@@ -23,11 +23,12 @@
  */
 int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
   dbg(DBG_VFS, "Looking up: %s, length: %d\n", name, len);
-  if (!dir->vn_ops->lookup) {
-    dbg(DBG_VFS, "not a directory!\n");
+  if (!S_ISDIR(dir->vn_mode)) {
+    dbg(DBG_VFS, "not a directory\n");
     return -ENOTDIR;
   }
-  return dir->vn_ops->lookup(dir, name, len, result);
+  int status = dir->vn_ops->lookup(dir, name, len, result);
+  return status;
 }
 
 /* When successful this function returns data in the following "out"-arguments:
@@ -50,40 +51,59 @@ int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
  */
 int dir_namev(const char *pathname, size_t *namelen, const char **name,
               vnode_t *base, vnode_t **res_vnode) {
-  dbg(DBG_VFS, "\n");
-  // TODO handle trailing '/'
+  dbg(DBG_VFS, "path: %s, %d\n", pathname, strlen(pathname));
+  if (!pathname)
+    return -ENOENT;
+  if (!strlen(pathname))
+    return -EINVAL;
   if (strlen(pathname) > MAXPATHLEN)
     return -ENAMETOOLONG;
+
   // Set base
   if (!base)
     base = curproc->p_cwd;
   size_t i = 0;
-  if (pathname && *pathname == '/'){
+  if (pathname[0] == '/'){
     base = vfs_root_vn;
-    ++i; // Skip leading '/'
+    for (; pathname[i] == '/'; ++i); // First not slash
   }
   vref(base);
-  size_t j;
-  for (; pathname[i]; i += j+1) {
+  size_t j = 0;
+  size_t k = 0;
+  for (;; i += j+k) {
     // Advance to next '/' or end
-    for (j = 0; pathname[i+j] && pathname[i+j] != '/'; ++j);
-    if (pathname[i+j]) { // Not the end of the path
-      vnode_t *result;
-      int status = lookup(base, pathname+i, j, &result);
+    dbg(DBG_VFS, "%d\n", i);
+    for (j = 0; pathname[i+j] && (pathname[i+j] != '/'); ++j);
+    dbg(DBG_VFS, "%d\n", j);
+    if (j > NAME_LEN) { // Check file name length
       vput(base);
-      if (status) {
-        return status;
-      }
-      base = result;
-    } else {
-      // Set namelen, name, res_vnode
-      if (namelen) *namelen = j;
-      if (name) *name = pathname + i;
-      if (res_vnode) *res_vnode = base;
-      else vput(base);
-      break;
+      return -ENAMETOOLONG;
     }
+    // Skip consecutive '/'
+    for (k = 0; pathname[i+j+k] == '/'; ++k); 
+    dbg(DBG_VFS, "%d\n", k);
+    // Stop if at the end or at the trailing /
+    if (!pathname[i+j+k]) break;
+    vnode_t *result;
+    int status = lookup(base, pathname+i, j, &result);
+    vput(base);
+    if (status) {
+      dbg(DBG_VFS, "lookup returned %d\n", status);
+      return status;
+    }
+    dbg(DBG_VFS, "new base, %i %i %i\n", i, j, k);
+    base = result;
   }
+  // Set namelen, name, res_vnode
+  if (!S_ISDIR(base->vn_mode)) {
+    vput(base);
+    return -ENOTDIR;
+  }
+  if (namelen) *namelen = j;
+  if (name) *name = pathname + i;
+  dbg(DBG_VFS, "%.*s, %d\n", *namelen, *name, *namelen);
+  if (res_vnode) *res_vnode = base; // Set res_vnode if possible
+  else vput(base);
   return 0;
 }
 
@@ -97,36 +117,44 @@ int dir_namev(const char *pathname, size_t *namelen, const char **name,
  */
 int open_namev(const char *pathname, int flag, vnode_t **res_vnode,
                vnode_t *base) {
-  dbg(DBG_VFS, "\n");
-  vnode_t *dir;
+  dbg(DBG_VFS, "opening %s with flag 0x%x\n", pathname, flag);
+  // Find directory
+  vnode_t *dir = NULL;
   size_t namelen;
   const char *name;
   int status = dir_namev(pathname, &namelen, &name, base, &dir);
   if (status) {
-    dbg(DBG_VFS, "error: %d\n", status);
+    dbg(DBG_VFS, "dir_namev error: %d\n", status);
     return status;
   }
+
+  // Perform lookup
   vnode_t *result = NULL;
+  dbg(DBG_VFS, "looking for '%.*s' in directory 0x%p\n", namelen, name, dir);
   status = lookup(dir, name, namelen, &result);
-  if (status) {
-    dbg(DBG_VFS, "\n");
+  if (status && status != -ENOENT) {
+    dbg(DBG_VFS, "lookup error: %d\n", status);
     vput(dir);
     return status;
   }
-  if (!result) {
+  if (status == -ENOENT) { // Not found
     dbg(DBG_VFS, "Node not found\n");
-    if (!(flag & O_CREAT)) {
+    if (!(flag & O_CREAT)) { // Check if create flag set
       vput(dir);
       return -ENOENT;
     }
-    dir->vn_ops->create(dir, name, namelen, &result);
-  } else {
-    dbg(DBG_VFS, "Node found\n");
-    if (res_vnode)
-      *res_vnode = result;
-    else
-      vput(result);
-  }
+    status = dir->vn_ops->create(dir, name, namelen, &result);
+    if (status) {
+      dbg(DBG_VFS, "create error: %d\n", status);
+      vput(dir);
+      return status;
+    }
+    dbg(DBG_VFS, "created node 0x%p in dir 0x%p\n", result, dir);
+  } 
+  if (res_vnode)
+    *res_vnode = result;
+  else
+    vput(result);
   vput(dir);
   return 0;
 }

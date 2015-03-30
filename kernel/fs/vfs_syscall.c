@@ -39,9 +39,10 @@
  * you fput() a file that you fget()'ed.
  */
 int do_read(int fd, void *buf, size_t nbytes) {
+  dbg(DBG_VFS, "\n");
   file_t *f = fget(fd);
   if (!f || !(f->f_mode & FMODE_READ)) {
-    fput(f);
+    if (f) fput(f);
     return -EBADF;
   }
   if (f->f_vnode->vn_mode == S_IFDIR) {
@@ -63,11 +64,13 @@ int do_read(int fd, void *buf, size_t nbytes) {
  *        fd is not a valid file descriptor or is not open for writing.
  */
 int do_write(int fd, const void *buf, size_t nbytes) {
+  dbg(DBG_VFS, "\n");
   file_t *f = fget(fd);
   if (!f || !(f->f_mode & FMODE_WRITE)) {
-    fput(f);
+    if (f) fput(f);
     return -EBADF;
   }
+  // Seek to end if appending
   if (f->f_mode & FMODE_APPEND)
     do_lseek(fd, 0, SEEK_END);
   int out = f->f_vnode->vn_ops->write(f->f_vnode, f->f_pos, buf, nbytes);
@@ -84,9 +87,11 @@ int do_write(int fd, const void *buf, size_t nbytes) {
  *        fd isn't a valid open file descriptor.
  */
 int do_close(int fd) {
-  file_t *f = fget(fd);
+  dbg(DBG_VFS, "\n");
+  if (fd < 0 || fd >= NFILES) return -EBADF;
+  file_t *f = curproc->p_files[fd];
   if (!f) return -EBADF;
-  curproc->p_files[fd] = 0;
+  curproc->p_files[fd] = NULL;
   fput(f);
   return 0;
 }
@@ -108,6 +113,8 @@ int do_close(int fd) {
  *        and tried to open a new one.
  */
 int do_dup(int fd) {
+  dbg(DBG_VFS, "\n");
+  if (fd == -1) return -EBADF;
   file_t *f = fget(fd);
   if (!f) return -EBADF;
   int new_fd = get_empty_fd(curproc);
@@ -129,12 +136,14 @@ int do_dup(int fd) {
  *        range for file descriptors.
  */
 int do_dup2(int ofd, int nfd) {
-  if (ofd == nfd) return 0;
+  dbg(DBG_VFS, "\n");
+  if (ofd == -1) return -EBADF;
   file_t *f = fget(ofd);
   if (!f || nfd < 0 || nfd >= NFILES) {
-    fput(f);
+    if (f) fput(f);
     return -EBADF;
   }
+  if (ofd == nfd) return 0;
   if (curproc->p_files[nfd])
     do_close(nfd);
   curproc->p_files[nfd] = f;
@@ -167,12 +176,12 @@ int do_dup2(int ofd, int nfd) {
  *        A component of path was too long.
  */
 int do_mknod(const char *path, int mode, unsigned devid) {
-  dbg(DBG_VFS, "\n");
+  dbg(DBG_VFS, "%s\n", path);
   if (mode != S_IFCHR && mode != S_IFBLK)
     return -EINVAL;
   size_t namelen;
   const char *name;
-  vnode_t *dir;
+  vnode_t *dir = NULL;
   int status = dir_namev(path, &namelen, &name, NULL, &dir);
   if (status) return status;
 
@@ -190,6 +199,7 @@ int do_mknod(const char *path, int mode, unsigned devid) {
   }
   dbg(DBG_VFS, "making node: %s\n", path);
   status = dir->vn_ops->mknod(dir, name, namelen, mode, devid);
+  dbg(DBG_VFS, "calling vput\n");
   vput(dir);
   return status;
 }
@@ -209,6 +219,7 @@ int do_mknod(const char *path, int mode, unsigned devid) {
  *        A component of path was too long.
  */
 int do_mkdir(const char *path) {
+  dbg(DBG_VFS, "%s\n", path);
   vnode_t *dir;
   size_t namelen;
   const char *name;
@@ -249,12 +260,22 @@ int do_mkdir(const char *path) {
  *        A component of path was too long.
  */
 int do_rmdir(const char *path) {
+  dbg(DBG_VFS, "%s\n", path);
   size_t namelen;
   const char *name;
   vnode_t *dir;
   int status = dir_namev(path, &namelen, &name, NULL, &dir);
   if (status) return status;
+  if (namelen == 1 && *name == '.') {
+    vput(dir);
+    return -EINVAL;
+  }
+  if (namelen == 2 && !strncmp(name, "..", 2)) {
+    vput(dir);
+    return -ENOTEMPTY;
+  }
   status = dir->vn_ops->rmdir(dir, name, namelen);
+  dbg(DBG_VFS, "status: %d\n", status);
   vput(dir);
   return status;
 }
@@ -273,6 +294,7 @@ int do_rmdir(const char *path) {
  *        A component of path was too long.
  */
 int do_unlink(const char *path) {
+  dbg(DBG_VFS, "%s\n", path);
   size_t namelen;
   const char *name;
   vnode_t *dir;
@@ -280,14 +302,18 @@ int do_unlink(const char *path) {
   if (status) return status;
   vnode_t *res;
   status = lookup(dir, name, namelen, &res);
-  if (res->vn_mode == S_IFDIR) {
+  if (status) {
+    vput(dir);
+    return status;
+  }
+  if (S_ISDIR(res->vn_mode)) {
     vput(dir);
     vput(res);
-    return -EISDIR;
+    return -EPERM;
   }
-  status = res->vn_ops->unlink(res, name, namelen);
-  vput(dir);
   vput(res);
+  status = dir->vn_ops->unlink(dir, name, namelen);
+  vput(dir);
   return status;
 }
 
@@ -313,29 +339,36 @@ int do_unlink(const char *path) {
  *        from is a directory.
  */
 int do_link(const char *from, const char *to) {
+  dbg(DBG_VFS, "Finding %s\n", from);
   vnode_t *res_from;
   int status = open_namev(from, O_RDWR, &res_from, NULL);
-  if (status) return status;
-  if (res_from->vn_mode == S_IFDIR) {
+  if (status) {
+    dbg(DBG_VFS, "open_namev returned %d\n", status);  
+    return status;
+  }
+  if (S_ISDIR(res_from->vn_mode)) {
     vput(res_from);
     return -EPERM;
   }
 
+  dbg(DBG_VFS, "Finding %s\n", to);
+  status = open_namev(to, O_RDWR, NULL, NULL);
+  if (status != -ENOENT) {
+    vput(res_from);
+    if (status) return status;
+    return -EEXIST;
+  }
   size_t namelen;
   const char *name;
-  vnode_t *res_to;
-  status = dir_namev(to, &namelen, &name, NULL, &res_to);
+  vnode_t *res_to_dir = NULL;
+  status = dir_namev(to, &namelen, &name, NULL, &res_to_dir);
   if (status) {
     vput(res_from);
     return status;
   }
-  if (res_to) {
-    vput(res_from);
-    vput(res_to); 
-    return -EEXIST;
-  }
-  status = res_to->vn_ops->link(res_from, res_to, name, namelen);
+  status = res_to_dir->vn_ops->link(res_from, res_to_dir, name, namelen);
   vput(res_from);
+  vput(res_to_dir);
   return status;
 }
 
@@ -348,8 +381,15 @@ int do_link(const char *from, const char *to) {
  * file could exist).
  */
 int do_rename(const char *oldname, const char *newname) {
-  do_link(newname, oldname);
-  return do_unlink(oldname);
+  dbg(DBG_VFS, "\n");
+  int status = do_link(oldname, newname);
+  if (status) {
+    dbg(DBG_VFS, "do_link returned %d\n", status); 
+    return status;
+  }
+  status = do_unlink(oldname);
+  if (status) dbg(DBG_VFS, "do_unlink returned %d\n", status); 
+  return status;
 }
 
 /* Make the named directory the current process's cwd (current working
@@ -366,11 +406,16 @@ int do_rename(const char *oldname, const char *newname) {
  *        A component of path is not a directory.
  */
 int do_chdir(const char *path) {
-  vnode_t *res; 
-  int result = open_namev(path, O_RDONLY, &res, NULL);
+  dbg(DBG_VFS, "%s\n", path);
+  vnode_t *dir; 
+  int result = open_namev(path, O_RDWR, &dir, NULL);
   if (result) return result;
+  if (!S_ISDIR(dir->vn_mode)) {
+    vput(dir);
+    return -ENOTDIR;
+  }
   vput(curproc->p_cwd);
-  curproc->p_cwd = res;
+  curproc->p_cwd = dir;
   return 0;
 }
 
@@ -390,11 +435,19 @@ int do_chdir(const char *path) {
  *        File descriptor does not refer to a directory.
  */
 int do_getdent(int fd, struct dirent *dirp) {
+  dbg(DBG_VFS, "\n");
+  if (fd == -1) return -EBADF;
   file_t *f = fget(fd);
   if (!f) return -EBADF;
-  if (!(f->f_vnode->vn_ops->readdir)) return -ENOTDIR;
-  int result = f->f_vnode->vn_ops->readdir(f->f_vnode, 0, dirp);
-  f->f_pos += result;
+  if (!S_ISDIR(f->f_vnode->vn_mode)) {
+    fput(f); 
+    return -ENOTDIR;
+  }
+  int result = f->f_vnode->vn_ops->readdir(f->f_vnode, f->f_pos, dirp);
+  if (result > 0) {
+    f->f_pos += result;
+    result = sizeof(dirent_t);
+  }
   fput(f);
   return result;
 }
@@ -410,25 +463,29 @@ int do_getdent(int fd, struct dirent *dirp) {
  *        file offset would be negative.
  */
 int do_lseek(int fd, int offset, int whence) {
-  file_t *f = fget(fd);
+  dbg(DBG_VFS, "\n");
   // Input validation
+  if (fd == -1) return -EBADF;
+  file_t *f = fget(fd);
   if (!f) return -EBADF;
-  if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END)
+  if (whence != SEEK_SET && whence != SEEK_CUR && whence != SEEK_END) {
+    fput(f);
     return -EINVAL;
-
-  int ret;
-  if (whence == SEEK_SET) {
-    f->f_pos = offset;
-    ret = offset;    
-  } else if (whence == SEEK_CUR) {
-    f->f_pos = f->f_pos + offset;
-    ret = f->f_pos;
-  } else if (whence == SEEK_END) {
-    f->f_pos = f->f_vnode->vn_len + offset;
-    ret = f->f_pos;
-  } else {
-    ret= -EINVAL;
   }
+  int new_pos;
+  if (whence == SEEK_SET) {
+      new_pos = offset;
+  } else if (whence == SEEK_CUR) {
+      new_pos = f->f_pos + offset;
+  } else { // SEEK_END
+    new_pos = f->f_vnode->vn_len + offset;
+  }
+  if (new_pos < 0) {
+    fput(f);
+    return -EINVAL;
+  }
+  f->f_pos = new_pos;
+  int ret = f->f_pos;
   fput(f);
   return ret;
 }
@@ -445,9 +502,10 @@ int do_lseek(int fd, int offset, int whence) {
  *        A component of path was too long.
  */
 int do_stat(const char *path, struct stat *buf) {
+  dbg(DBG_VFS, "\n");
   struct vnode *res;
   int status = open_namev(path, O_RDONLY, &res, NULL);
-  if (!status) return status;
+  if (status) return status;
   status = res->vn_ops->stat(res, buf);
   vput(res);
   return status;

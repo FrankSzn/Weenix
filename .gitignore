@@ -18,6 +18,7 @@ disk0.vmdk
 *.bak
 *.orig
 *.nfs*
+out.txt
 
 # Vagrant data
 .vagrant

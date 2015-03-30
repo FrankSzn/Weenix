@@ -57,6 +57,7 @@ static void *initproc_run(int arg1, void *arg2);
 static void hard_shutdown(void);
 
 static context_t bootstrap_context;
+int vfstest_main(int argc, char **argv); 
 
 int test_procs(kshell_t *ks, int argc, char **argv);
 int test_drivers(kshell_t *ks, int argc, char **argv);
@@ -166,8 +167,11 @@ static void *idleproc_run(int arg1, void *arg2) {
 #ifdef __VFS__
 /* Once you have VFS remember to set the current working directory
  * of the idle and init processes */
+  // TODO: are these vputs necessary?
   initthr->kt_proc->p_cwd = vfs_root_vn;
+  vref(vfs_root_vn);
   curproc->p_cwd = vfs_root_vn;
+  vref(vfs_root_vn);
 
 /* Here you need to make the null, zero, and tty devices using mknod */
 /* You can't do this until you have VFS, check the include/drivers/dev.h
@@ -272,12 +276,12 @@ void *calc_fib(int arg1, void *arg2) {
 static void *initproc_run(int arg1, void *arg2) {
   dbg(DBG_INIT, "init running\n");
 
+  test_vfs(NULL, 0, NULL);
 
   kshell_add_command("procs", &test_procs, "test procs");
   kshell_add_command("drivers", &test_drivers, "test drivers");
+  kshell_add_command("vfs", &test_vfs, "test vfs");
 
-  KASSERT(!open_namev("/dev/tty0", O_RDWR, NULL, NULL));
-  KASSERT(!open_namev("/dev/tty1", O_RDWR, NULL, NULL));
   int err = 0;
   kshell_t *ksh = kshell_create(0);
   KASSERT(ksh && "kshell_create failed");
@@ -386,6 +390,10 @@ int test_drivers(kshell_t *ks, int argc, char **argv) {
   return 0;
 }
 
+int test_vfs(kshell_t *ks, int argc, char **argv) {
+  vfstest_main(1, NULL);
+  return 0;
+}
 
 /**
  * Clears all interrupts and halts, meaning that we will never run
