@@ -105,6 +105,7 @@ void vref(vnode_t *vn) {
 }
 
 vnode_t *vget(struct fs *fs, ino_t vno) {
+  dbg(DBG_VNREF, "ino %d\n", vno);
   vnode_t *vn = NULL;
 
   KASSERT(fs);

@@ -143,7 +143,10 @@ int do_dup2(int ofd, int nfd) {
     if (f) fput(f);
     return -EBADF;
   }
-  if (ofd == nfd) return 0;
+  if (ofd == nfd) {
+    fput(f);  
+    return nfd;
+  }
   if (curproc->p_files[nfd])
     do_close(nfd);
   curproc->p_files[nfd] = f;
@@ -176,7 +179,7 @@ int do_dup2(int ofd, int nfd) {
  *        A component of path was too long.
  */
 int do_mknod(const char *path, int mode, unsigned devid) {
-  dbg(DBG_VFS, "%s\n", path);
+  dbg(DBG_VFS, "%s, mode: %d, devid: %d\n", path, mode, devid);
   if (mode != S_IFCHR && mode != S_IFBLK)
     return -EINVAL;
   size_t namelen;

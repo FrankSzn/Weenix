@@ -171,7 +171,11 @@ void proc_cleanup(int status) {
   // Wake parent
   sched_broadcast_on(&curproc->p_pproc->p_wait);
 
-  // TODO: close files
+  for (int i = 0; i < NFILES; ++i) {
+    if (curproc->p_files[i])
+      do_close(i);
+  }
+
   // TODO: clean up VM mappings
 }
 

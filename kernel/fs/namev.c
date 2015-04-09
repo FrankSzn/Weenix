@@ -22,7 +22,7 @@
  * Note: returns with the vnode refcount on *result incremented.
  */
 int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
-  dbg(DBG_VFS, "Looking up: %s, length: %d\n", name, len);
+  //dbg(DBG_VFS, "Looking up: %s, length: %d\n", name, len);
   if (!S_ISDIR(dir->vn_mode)) {
     dbg(DBG_VFS, "not a directory\n");
     return -ENOTDIR;
@@ -72,16 +72,13 @@ int dir_namev(const char *pathname, size_t *namelen, const char **name,
   size_t k = 0;
   for (;; i += j+k) {
     // Advance to next '/' or end
-    dbg(DBG_VFS, "%d\n", i);
     for (j = 0; pathname[i+j] && (pathname[i+j] != '/'); ++j);
-    dbg(DBG_VFS, "%d\n", j);
     if (j > NAME_LEN) { // Check file name length
       vput(base);
       return -ENAMETOOLONG;
     }
     // Skip consecutive '/'
     for (k = 0; pathname[i+j+k] == '/'; ++k); 
-    dbg(DBG_VFS, "%d\n", k);
     // Stop if at the end or at the trailing /
     if (!pathname[i+j+k]) break;
     vnode_t *result;
@@ -91,7 +88,6 @@ int dir_namev(const char *pathname, size_t *namelen, const char **name,
       dbg(DBG_VFS, "lookup returned %d\n", status);
       return status;
     }
-    dbg(DBG_VFS, "new base, %i %i %i\n", i, j, k);
     base = result;
   }
   // Set namelen, name, res_vnode

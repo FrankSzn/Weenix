@@ -88,8 +88,7 @@ int do_open(const char *filename, int oflags) {
     f->f_mode = FMODE_WRITE | FMODE_READ;
   } else {
     dbg(DBG_VFS, "invalid flags\n");
-    fput(f);
-    curproc->p_files[new_fd] = NULL;
+    do_close(new_fd);
     return -EINVAL;
   }
   if (oflags & O_APPEND)
@@ -99,13 +98,14 @@ int do_open(const char *filename, int oflags) {
   int status = open_namev(filename, oflags, &result, NULL);
   if (status) {
     dbg(DBG_VFS, "couldn't open path\n");
-    fput(f);
+    do_close(new_fd);
     curproc->p_files[new_fd] = NULL;
     return status;
   }
   KASSERT(result);
   if (S_ISDIR(result->vn_mode) && (f->f_mode & FMODE_WRITE)) {
-    fput(f);
+    dbg(DBG_VFS, "error: tried to open directory\n");
+    do_close(new_fd);
     vput(result);
     return -EISDIR;
   }

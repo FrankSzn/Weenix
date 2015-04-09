@@ -8,6 +8,7 @@ disk0.vmdk
 *.pyc
 *.gdbcomm
 *.so
+cscope.out
 
 .staging
 # editor temporary files

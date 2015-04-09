@@ -167,18 +167,15 @@ static void *idleproc_run(int arg1, void *arg2) {
 #ifdef __VFS__
 /* Once you have VFS remember to set the current working directory
  * of the idle and init processes */
-  // TODO: are these vputs necessary?
   initthr->kt_proc->p_cwd = vfs_root_vn;
-  vref(vfs_root_vn);
   curproc->p_cwd = vfs_root_vn;
-  vref(vfs_root_vn);
+  vref(vfs_root_vn); // Want to start with two references
 
 /* Here you need to make the null, zero, and tty devices using mknod */
 /* You can't do this until you have VFS, check the include/drivers/dev.h
  * file for macros with the device ID's you will need to pass to mknod */
   do_mkdir("/dev");
   do_mknod("/dev/null", S_IFCHR, MKDEVID(1,0));
-  do_mknod("/dev/zero", S_IFCHR, MKDEVID(1,1));
   do_mknod("/dev/zero", S_IFCHR, MKDEVID(1,1));
   do_mknod("/dev/tty0", S_IFCHR, MKDEVID(2,0));
   do_mknod("/dev/tty1", S_IFCHR, MKDEVID(2,1));
@@ -275,8 +272,6 @@ void *calc_fib(int arg1, void *arg2) {
  */
 static void *initproc_run(int arg1, void *arg2) {
   dbg(DBG_INIT, "init running\n");
-
-  test_vfs(NULL, 0, NULL);
 
   kshell_add_command("procs", &test_procs, "test procs");
   kshell_add_command("drivers", &test_drivers, "test drivers");
