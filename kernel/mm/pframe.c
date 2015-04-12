@@ -340,7 +340,9 @@ void pframe_migrate(pframe_t *pf, mmobj_t *dest) {
  *
  * @param pf the page to pin
  */
-void pframe_pin(pframe_t *pf) { NOT_YET_IMPLEMENTED("S5FS: pframe_pin"); }
+void pframe_pin(pframe_t *pf) { 
+  NOT_YET_IMPLEMENTED("S5FS: pframe_pin");
+}
 
 /*
  * Decreases the pin count on a page. If the pin count reaches zero, then the
@@ -352,7 +354,9 @@ void pframe_pin(pframe_t *pf) { NOT_YET_IMPLEMENTED("S5FS: pframe_pin"); }
  *
  * @param pf a pinned page (a page with a positive pin count)
  */
-void pframe_unpin(pframe_t *pf) { NOT_YET_IMPLEMENTED("S5FS: pframe_unpin"); }
+void pframe_unpin(pframe_t *pf) { 
+  NOT_YET_IMPLEMENTED("S5FS: pframe_unpin");
+}
 
 /*
  * Indicates that a page is about to be modified. This should be called on a
