@@ -181,7 +181,7 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
     *get_rawtail(nt) = c;
     ++(nt->rawtail);
     dbg(DBG_TERM, "added %c, new rawtail %d\n", c, nt->rawtail);
-    // TODO: ask mentor about EOF
+    // TODO: ask mentor about EOF (count as new line)
     if (c == '\r' || c == '\n') { // New line
       nt->ckdtail = nt->rawtail;
       sched_broadcast_on(&nt->rwaitq);
