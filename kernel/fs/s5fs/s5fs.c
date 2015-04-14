@@ -205,6 +205,16 @@ int s5fs_mount(struct fs *fs) {
  */
 static void s5fs_read_vnode(vnode_t *vnode) {
   NOT_YET_IMPLEMENTED("S5FS: s5fs_read_vnode");
+  pframe_t *pframe;
+  mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
+  int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
+  KASSERT(!status);
+  s5_inode_t = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
+  /*     vn_ops
+   *     vn_mode
+   *         and vn_devid if appropriate
+   *     vn_len
+   *     vn_i*/
 }
 
 /*
@@ -622,11 +632,22 @@ static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
  */
 static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
   dbg(DBG_S5FS, "\n");
+  KASSERT(PAGE_ALIGNED(pagebuf));
   kmutex_lock(&vnode->vn_mutex);
-  NOT_YET_IMPLEMENTED("S5FS: s5fs_fillpage");
-  int status = s5_seek_to_block(vnode, offset, alloc);
+  // Find block
+  int block_no = s5_seek_to_block(vnode, offset, 0);
+  if (block_no < 0) { // Error
+    kmutex_unlock(&vnode->vn_mutex);
+    return block_no;
+  }
+  int status = 0;
+  if (block_no) // Non-sparse block
+    status = vnode->vn_bdev->bd_ops->read_block(vnode->vn_bdev, 
+        (char *)pagebuf, block_no, 1);
+  else // Sparse block, fill with zeros
+    memset(pagebuf, 0, S5_BLOCK_SIZE);
   kmutex_unlock(&vnode->vn_mutex);
-  return -1;
+  return status;
 }
 
 /*
@@ -654,13 +675,8 @@ static int s5fs_dirtypage(vnode_t *vnode, off_t offset) {
   }
   // Attempt to make not sparse
   status = s5_seek_to_block(vnode, offset, 1);
-  if (status <= 0) { 
-    kmutex_unlock(&vnode->vn_mutex);
-    return status;
-  }
-  NOT_YET_IMPLEMENTED("S5FS: s5fs_dirtypage");
   kmutex_unlock(&vnode->vn_mutex);
-  return -1;
+  return status;
 }
 
 /*
@@ -668,10 +684,18 @@ static int s5fs_dirtypage(vnode_t *vnode, off_t offset) {
  */
 static int s5fs_cleanpage(vnode_t *vnode, off_t offset, void *pagebuf) {
   dbg(DBG_S5FS, "\n");
+  KASSERT(PAGE_ALIGNED(pagebuf));
   kmutex_lock(&vnode->vn_mutex);
-  NOT_YET_IMPLEMENTED("S5FS: s5fs_cleanpage");
+  // Find block
+  int block_no = s5_seek_to_block(vnode, offset, 1);
+  if (block_no <= 0) { // Error
+    kmutex_unlock(&vnode->vn_mutex);
+    return block_no;
+  }
+  int status = vnode->vn_bdev->bd_ops->write_block(vnode->vn_bdev, 
+      (char *)pagebuf, block_no, 1);
   kmutex_unlock(&vnode->vn_mutex);
-  return -1;
+  return status;
 }
 
 /* Diagnostic/Utility: */

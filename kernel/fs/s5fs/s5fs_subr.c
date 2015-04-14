@@ -72,6 +72,51 @@ static void lock_s5(s5fs_t *fs) { kmutex_lock(&fs->s5f_mutex); }
  */
 static void unlock_s5(s5fs_t *fs) { kmutex_unlock(&fs->s5f_mutex); }
 
+/* Abstraction for both reading and writing files
+ * @write a boolean indicating whether to write (1) or read (0)
+ * */
+int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write) {
+  pframe_t *pframe;
+  size_t ndone_total = 0;
+  // TODO: indirection, sparse files, file end, max file size
+  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
+  while (len) {
+    blocknum_t block = S5_DATA_BLOCK(seek);
+    int status;
+    if (block <= S5_NDIRECT_BLOCKS) { // Look in the inode
+      status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
+        inode->s5_direct_blocks[block-1], &pframe);
+    } else { // Look in the indirect block
+      block -= S5_NDIRECT_BLOCKS;
+      if (block > S5_NIDIRECT_BLOCKS) {
+        dbg(DBG_S5FS, "error: exceeded max file size\n");
+        return -EFBIG;
+      }
+      status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
+        inode->s5_indirect_block, &pframe);
+      KASSERT(!status);
+      status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
+        ((int *)pframe)[block-1], &pframe);
+    } 
+    if (status) {
+      dbg(DBG_S5FS, "pframe_get returned %d\n", status);
+      return ndone_total;
+    }
+    KASSERT(pframe->pf_addr);
+    size_t offset = S5_DATA_OFFSET(seek);
+    size_t ndone = MIN(len, S5_BLOCK_SIZE - offset);
+    if (write) {
+      memcpy(pframe->pf_addr + offset, buf + ndone_total, ndone);
+      pframe_dirty(pframe);
+    } else
+      memcpy(buf + ndone_total, pframe->pf_addr + offset, ndone);
+    seek += ndone;
+    len -= ndone;
+    ndone_total += ndone;
+  }
+  return ndone_total;
+}
+
 /*
  * Write len bytes to the given inode, starting at seek bytes from the
  * beginning of the inode. On success, return the number of bytes
@@ -82,7 +127,7 @@ static void unlock_s5(s5fs_t *fs) { kmutex_unlock(&fs->s5f_mutex); }
  * them identically.
  *
  * Writing to a sparse block of the file should cause that block to be
- * allocated.  Writing past the end of the file should increase the size
+ * allocated. Writing past the end of the file should increase the size
  * of the file. Blocks between the end and where you start writing will
  * be sparse. In addition, bytes between where the old end of the file was and
  * the beginning of where you start writing should also be null.
@@ -91,15 +136,16 @@ static void unlock_s5(s5fs_t *fs) { kmutex_unlock(&fs->s5f_mutex); }
  * offset is not block aligned, be sure to set to null everything from where the
  * file ended to where the write begins.
  *
- * Do not call s5_seek_to_block() directly from this function.  You will
+ * Do not call s5_seek_to_block() directly from this function. You will
  * use the vnode's pframe functions, which will eventually result in a
  * call to s5_seek_to_block().
  *
  * You will need pframe_dirty(), pframe_get(), memcpy().
  */
 int s5_write_file(vnode_t *vnode, off_t seek, const char *bytes, size_t len) {
+  dbg(DBG_S5FS, "\n");
   NOT_YET_IMPLEMENTED("S5FS: s5_write_file");
-  return -1;
+  return s5_file_op(vnode, seek, (char *)bytes, len, 1);
 }
 
 /*
@@ -123,9 +169,10 @@ int s5_write_file(vnode_t *vnode, off_t seek, const char *bytes, size_t len) {
  * You probably want to use pframe_get(), memcpy().
  */
 int s5_read_file(struct vnode *vnode, off_t seek, char *dest, size_t len) {
-  NOT_YET_IMPLEMENTED("S5FS: s5_read_file");
-  return -1;
+  dbg(DBG_S5FS, "\n");
+  return s5_file_op(vnode, seek, dest, len, 0);
 }
+
 
 /*
  * Allocate a new disk-block off the block free list and return it. If
@@ -145,8 +192,38 @@ int s5_read_file(struct vnode *vnode, off_t seek, char *dest, size_t len) {
  * and s5_dirty_super()
  */
 static int s5_alloc_block(s5fs_t *fs) {
-  NOT_YET_IMPLEMENTED("S5FS: s5_alloc_block");
-  return -1;
+  dbg(DBG_S5FS, "\n");
+  lock_s5(fs);
+  s5_super_t *super = fs->s5f_super;
+  s5_dirty_super(fs);
+  if (!super->s5s_nfree) { // Super block exhausted
+    int next = super->s5s_free_blocks[S5_NBLKS_PER_FNODE-1];
+    if (next == -1) {
+      dbg(DBG_S5FS, "out of free blocks!\n");
+      unlock_s5(fs);
+      return -ENOSPC;
+    }
+    // Copy contents of next block on list
+    pframe_t *pframe;
+    int status = pframe_get(S5FS_TO_VMOBJ(fs), next, &pframe);
+    if (status) {
+      dbg(DBG_S5FS, "pframe_get returned %d\n", status);
+      unlock_s5(fs);
+      return status;
+    }
+    pframe_dirty(pframe); // TODO: why dirty if it isn't modified?
+    uint32_t *fblock = (uint32_t *) pframe->pf_addr;
+    for (int i = 0; i < S5_NBLKS_PER_FNODE; ++i) {
+      super->s5s_free_blocks[i] = fblock[i];
+    }
+    super->s5s_nfree = S5_NBLKS_PER_FNODE - 1;
+    unlock_s5(fs);
+    return next;
+  } else { // Use rest of super block
+    --super->s5s_nfree;
+    unlock_s5(fs);
+    return super->s5s_free_blocks[super->s5s_nfree];
+  }
 }
 
 /*
@@ -321,8 +398,20 @@ void s5_free_inode(vnode_t *vnode) {
  * Either is fine.
  */
 int s5_find_dirent(vnode_t *vnode, const char *name, size_t namelen) {
-  NOT_YET_IMPLEMENTED("S5FS: s5_find_dirent");
-  return -1;
+  dbg(DBG_S5FS, "\n");
+  KASSERT(name);
+  KASSERT(namelen);
+  size_t seek = 0;
+  s5_dirent_t dirent;
+  int nread = s5_read_file(vnode, seek, (char *)&dirent, sizeof(s5_dirent_t));
+  while (nread) {
+    KASSERT(nread == sizeof(s5_dirent_t));
+    seek += nread;
+    if (name_match(dirent.s5d_name, name, namelen))
+      return dirent.s5d_inode;
+    nread = s5_read_file(vnode, seek, (char *)&dirent, sizeof(s5_dirent_t));
+  }
+  return -ENOENT;
 }
 
 /*
@@ -346,8 +435,38 @@ int s5_find_dirent(vnode_t *vnode, const char *name, size_t namelen) {
  * s5_write_file(), and s5_dirty_inode().
  */
 int s5_remove_dirent(vnode_t *vnode, const char *name, size_t namelen) {
-  NOT_YET_IMPLEMENTED("S5FS: s5_remove_dirent");
-  return -1;
+  dbg(DBG_S5FS, "\n");
+  size_t fpos = 0; // Position in file
+  s5_dirent_t dirent;
+  s5_dirent_t last_dirent; // Remember last non-zero dirent
+  int nread = s5_read_file(vnode, fpos, (char *)&dirent, sizeof(s5_dirent_t));
+  size_t found_pos = -1; // Position of found directory entry
+  // Find matching directory entry
+  while (nread && dirent.s5d_name[0]) {
+    KASSERT(nread == sizeof(s5_dirent_t));
+    if (name_match(dirent.s5d_name, name, namelen)) {
+      found_pos = fpos;
+      vnode_t *vn = vget(vnode->vn_fs, dirent.s5d_inode);
+      s5_dirty_inode(VNODE_TO_S5FS(vnode), VNODE_TO_S5INODE(vn));
+      --VNODE_TO_S5INODE(vn)->s5_linkcount;
+      vput(vn);
+    }
+    fpos += nread;
+    last_dirent = dirent;
+    nread = s5_read_file(vnode, fpos, (char *)&dirent, sizeof(s5_dirent_t));
+  }
+  if (found_pos == -1)
+    return -ENOENT;
+  // Replace found entry with last entry
+  int nwrite = s5_write_file(vnode, found_pos, (char *)&last_dirent, 
+      sizeof(s5_dirent_t));
+  KASSERT(nwrite == sizeof(s5_dirent_t));
+  // Zero out last entry
+  memset((void *)&dirent, 0, sizeof(s5_dirent_t));
+  nwrite = s5_write_file(vnode, fpos - sizeof(s5_dirent_t), (char *)&dirent, 
+      sizeof(s5_dirent_t));
+  KASSERT(nwrite == sizeof(s5_dirent_t));
+  return 0;
 }
 
 /*
@@ -357,14 +476,33 @@ int s5_remove_dirent(vnode_t *vnode, const char *name, size_t namelen) {
  * When this function returns, the inode refcount on the file that was linked to
  * should be incremented.
  *
- * Remember to incrament the ref counts appropriately
+ * Remember to increment the ref counts appropriately
  *
  * You probably want to use s5_find_dirent(), s5_write_file(), and
  *s5_dirty_inode().
  */
 int s5_link(vnode_t *parent, vnode_t *child, const char *name, size_t namelen) {
-  NOT_YET_IMPLEMENTED("S5FS: s5_link");
-  return -1;
+  dbg(DBG_S5FS, "\n");
+  size_t fpos = 0; // Position in file
+  s5_dirent_t dirent;
+  int nread = s5_read_file(parent, fpos, (char *)&dirent, sizeof(s5_dirent_t));
+  // Find matching directory entry
+  while (nread && dirent.s5d_name[0]) {
+    KASSERT(nread == sizeof(s5_dirent_t));
+    fpos += nread;
+    nread = s5_read_file(parent, fpos, (char *)&dirent, sizeof(s5_dirent_t));
+  }
+  // Add new entry at end
+  strncpy(dirent.s5d_name, name, namelen); // Copy name
+  dirent.s5d_name[namelen] = '\0';
+  dirent.s5d_inode = child->vn_vno; // Copy inode
+  int nwrite = s5_write_file(parent, fpos, (char *)&dirent, 
+      sizeof(s5_dirent_t));
+  KASSERT(nwrite == sizeof(s5_dirent_t));
+  // Incrememnt refcount
+  s5_dirty_inode(VNODE_TO_S5FS(child), VNODE_TO_S5INODE(child));
+  ++VNODE_TO_S5INODE(child)->s5_linkcount;
+  return 0;
 }
 
 /*
@@ -377,6 +515,7 @@ int s5_link(vnode_t *parent, vnode_t *child, const char *name, size_t namelen) {
  * You'll probably want to use pframe_get().
  */
 int s5_inode_blocks(vnode_t *vnode) {
+  dbg(DBG_S5FS, "\n");
   NOT_YET_IMPLEMENTED("S5FS: s5_inode_blocks");
   return -1;
 }
