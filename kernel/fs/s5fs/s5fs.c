@@ -211,7 +211,8 @@ static void s5fs_read_vnode(vnode_t *vnode) {
   KASSERT(!status);
   pframe_pin(pframe); // Pin frame
   // Get inode
-  s5_inode_t *inode = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
+  s5_inode_t *inode = ((s5_inode_t *)pframe->pf_addr) + 
+    S5_INODE_OFFSET(vnode->vn_vno);
   ++inode->s5_linkcount; // Increment link count
   // Set vn_i
   vnode->vn_i = inode;
@@ -219,23 +220,28 @@ static void s5fs_read_vnode(vnode_t *vnode) {
   // Set devid
   if ((S5_TYPE_CHR == type) || (S5_TYPE_BLK == type))
     vnode->vn_devid = inode->s5_indirect_block;
-  // Set mode
+  else
+    vnode->vn_devid = NULL;
+  // Set mode and ops
   if (type == S5_TYPE_FREE ||
-      (inode->s5_type == S5_TYPE_DATA)) 
+      (inode->s5_type == S5_TYPE_DATA)) {
     vnode->vn_mode = S_IFREG;
-  else if (type == S5_TYPE_DIR) 
+    vnode->vn_ops = &s5fs_file_vops;
+  } else if (type == S5_TYPE_DIR) {
     vnode->vn_mode = S_IFDIR;
-  else if (type == S5_TYPE_CHR) 
+    vnode->vn_ops = &s5fs_dir_vops;
+  } else if (type == S5_TYPE_CHR) {
     vnode->vn_mode = S_IFCHR;
-  else if (type == S5_TYPE_BLK) 
+    vnode->vn_ops = NULL;
+  } else if (type == S5_TYPE_BLK) {
     vnode->vn_mode = S_IFBLK;
+    vnode->vn_ops = NULL;
+  }
   // Set len
   if (type == S5_TYPE_FREE)
     vnode->vn_len = 0;
   else
-    vnode->vn_len = inode->s5_un.s5_size;
-  // Set ops
-  vnode->vn_ops = s5fs_fsops;
+    vnode->vn_len = inode->s5_size;
 }
 
 /*
@@ -254,8 +260,9 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
   KASSERT(!status);
   pframe_unpin(pframe); // Unpin frame
   // Get inode
-  s5_inode_t *inode = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
-  --inode->s5_linkcount; // Decrement link count
+  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
+  // Decrement link count
+  --inode->s5_linkcount; 
   KASSERT(inode->s5_linkcount >= 0);
   // Free inode if link count zero
   if (!inode->s5_linkcount)
@@ -270,13 +277,8 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
  *
  */
 static int s5fs_query_vnode(vnode_t *vnode) {
-  // Get page frame
-  pframe_t *pframe;
-  mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
-  int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
-  KASSERT(!status);
   // Get inode
-  s5_inode_t *inode = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
+  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(inode->s5_linkcount >= 0);
   return inode->s5_linkcount > 0;
 }
@@ -650,14 +652,14 @@ static int s5fs_readdir(vnode_t *vnode, off_t offset, struct dirent *d) {
  */
 static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
   dbg(DBG_S5FS, "\n");
-  if (!ss)
-    return -EFAULT;
+  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
+  KASSERT(ss);
+  KASSERT(ss->st_mode != S5_TYPE_FREE);
   kmutex_lock(&vnode->vn_mutex);
   ss->st_mode = vnode->vn_mode;
   ss->st_ino = vnode->vn_mode;
-  // TODO: these two
-  //ss->st_nlink = ;
-  //ss->st_size = ;
+  ss->st_nlink = inode->s5_linkcount;
+  ss->st_size = inode->s5_size;
   ss->st_blksize = S5_BLOCK_SIZE;
   ss->st_blocks = s5_inode_blocks(vnode);
   kmutex_unlock(&vnode->vn_mutex);
@@ -681,11 +683,12 @@ static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
     return block_no;
   }
   int status = 0;
-  if (block_no) // Non-sparse block
+  if (block_no) {// Non-sparse block
     status = vnode->vn_bdev->bd_ops->read_block(vnode->vn_bdev, 
         (char *)pagebuf, block_no, 1);
-  else // Sparse block, fill with zeros
+  } else { // Sparse block, fill with zeros
     memset(pagebuf, 0, S5_BLOCK_SIZE);
+  }
   kmutex_unlock(&vnode->vn_mutex);
   return status;
 }

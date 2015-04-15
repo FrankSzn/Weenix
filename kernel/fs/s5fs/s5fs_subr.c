@@ -58,8 +58,41 @@ static int s5_alloc_block(s5fs_t *);
  * You probably want to use pframe_get, pframe_pin, pframe_unpin, pframe_dirty.
  */
 int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
-  NOT_YET_IMPLEMENTED("S5FS: s5_seek_to_block");
-  return -1;
+  // TODO: pin inode. Otherwise looks good
+  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
+  KASSERT(inode);
+  blocknum_t block_index = S5_DATA_BLOCK(seekptr);
+  uint32_t blocknum;
+  int indirect = 0; // Bool, true if indirect block
+  pframe_t *pframe;
+  if (block_index < S5_NDIRECT_BLOCKS) { // Direct blocks
+    blocknum = inode->s5_direct_blocks[block_index];
+  } else { // Indirect blocks
+    indirect = 1;
+    block_index -= S5_NDIRECT_BLOCKS;
+    KASSERT(block_index < S5_NIDIRECT_BLOCKS);
+    int status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
+        block_index, &pframe);
+    if (status) return status;
+    blocknum = ((uint32_t *)pframe->pf_addr)[block_index];
+  }
+  if (!blocknum) { // Blocknum is zero, must be sparse
+    if (!alloc) // Can't allocate a new block, return zero
+      return 0;
+    // Allocate new block
+    blocknum = s5_alloc_block(VNODE_TO_S5FS(vnode));
+    if (blocknum <= 0) {
+      return blocknum;
+    }
+    if (indirect) { // New indirect block
+      pframe_dirty(pframe);
+      ((uint32_t *)pframe->pf_addr)[block_index] = blocknum;
+    } else { // New direct block
+      s5_dirty_inode(VNODE_TO_S5FS(vnode), inode);
+      inode->s5_direct_blocks[block_index] = blocknum;
+    }
+  }
+  return blocknum;
 }
 
 /*
@@ -76,31 +109,19 @@ static void unlock_s5(s5fs_t *fs) { kmutex_unlock(&fs->s5f_mutex); }
  * @write a boolean indicating whether to write (1) or read (0)
  * */
 int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write) {
-  NOT_YET_IMPLEMENTED("S5FS: s5_file_op");
+  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
+  KASSERT(seek >= 0);
+  KASSERT(inode);
+  // Check for reading after file end
+  if (!write && seek >= inode->s5_size)
+    return 0;
   pframe_t *pframe;
   size_t ndone_total = 0;
-  // TODO: indirection, sparse files, file end, max file size
-  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   while (len) {
-    blocknum_t block = S5_DATA_BLOCK(seek);
-    int status;
-    if (block <= S5_NDIRECT_BLOCKS) { // Look in the inode
-      status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
-        inode->s5_direct_blocks[block-1], &pframe);
-    } else { // Look in the indirect block
-      block -= S5_NDIRECT_BLOCKS;
-      if (block > S5_NIDIRECT_BLOCKS) {
-        dbg(DBG_S5FS, "error: exceeded max file size\n");
-        return -EFBIG;
-      }
-      status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
-        inode->s5_indirect_block, &pframe);
-      KASSERT(!status);
-      status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
-        ((int *)pframe)[block-1], &pframe);
-    } 
+    blocknum_t blocknum = S5_DATA_BLOCK(seek);
+    int status = pframe_get(&vnode->vn_mmobj, blocknum, &pframe);
     if (status) {
-      dbg(DBG_S5FS, "pframe_get returned %d\n", status);
+      dbg(DBG_S5FS, "pframe_get error: %d\n", status);
       return ndone_total;
     }
     size_t offset = S5_DATA_OFFSET(seek);
@@ -108,13 +129,21 @@ int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write
 
     // Do the operation on this page
     if (write) {
-      memcpy(pframe->pf_addr + offset, buf + ndone_total, ndone);
       pframe_dirty(pframe);
-    } else
+      memcpy(pframe->pf_addr + offset, buf + ndone_total, ndone);
+    } else {
       memcpy(buf + ndone_total, pframe->pf_addr + offset, ndone);
+    }
+    // Update counters
     seek += ndone;
     len -= ndone;
     ndone_total += ndone;
+  }
+  // Update file size
+  uint32_t new_size = seek + ndone_total;
+  if (write && new_size > inode->s5_size) {
+    inode->s5_size = new_size; 
+    s5_dirty_inode(VNODE_TO_S5FS(vnode), inode);
   }
   return ndone_total;
 }
@@ -196,8 +225,12 @@ static int s5_alloc_block(s5fs_t *fs) {
   dbg(DBG_S5FS, "\n");
   lock_s5(fs);
   s5_super_t *super = fs->s5f_super;
-  s5_dirty_super(fs);
-  if (!super->s5s_nfree) { // Super block exhausted
+  s5_dirty_super(fs); // Dirty super
+  if (super->s5s_nfree) { // Use next entry in super block
+    --super->s5s_nfree;
+    unlock_s5(fs);
+    return super->s5s_free_blocks[super->s5s_nfree];
+  } else { // Super block exhausted
     int next = super->s5s_free_blocks[S5_NBLKS_PER_FNODE-1];
     if (next == -1) {
       dbg(DBG_S5FS, "out of free blocks!\n");
@@ -212,18 +245,13 @@ static int s5_alloc_block(s5fs_t *fs) {
       unlock_s5(fs);
       return status;
     }
-    pframe_dirty(pframe); // TODO: why dirty if it isn't modified?
-    uint32_t *fblock = (uint32_t *) pframe->pf_addr;
+    uint32_t *freeblocks = (uint32_t *) pframe->pf_addr;
     for (int i = 0; i < S5_NBLKS_PER_FNODE; ++i) {
-      super->s5s_free_blocks[i] = fblock[i];
+      super->s5s_free_blocks[i] = freeblocks[i];
     }
     super->s5s_nfree = S5_NBLKS_PER_FNODE - 1;
     unlock_s5(fs);
-    return next;
-  } else { // Use rest of super block
-    --super->s5s_nfree;
-    unlock_s5(fs);
-    return super->s5s_free_blocks[super->s5s_nfree];
+    return next; // Return emptied out next block
   }
 }
 
@@ -518,29 +546,24 @@ int s5_link(vnode_t *parent, vnode_t *child, const char *name, size_t namelen) {
 int s5_inode_blocks(vnode_t *vnode) {
   dbg(DBG_S5FS, "\n");
   int blocks = 0;
-  // Get page frame
-  pframe_t *pframe;
-  mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
-  int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
-  if (status)
-    return status;
   // Get inode
-  s5_inode_t *inode = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
+  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   // Look in the inode
   for (int i = 0; i < S5_NDIRECT_BLOCKS; ++i) { 
-    if (inode->s5_direct_blocks[block-1])
+    if (inode->s5_direct_blocks[i])
       ++blocks;
   }
   // Look in the indirect block
   if (inode->s5_indirect_block) {
-    for (int i = 0; i < S5_NIDIRECT_BLOCKS; ++i) {
-      status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
+    for (uint32_t i = 0; i < S5_NIDIRECT_BLOCKS; ++i) {
+      pframe_t *pframe;
+      int status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
           inode->s5_indirect_block, &pframe);
       if (status) {
         dbg(DBG_S5FS, "pframe_get returned %d\n", status);
         return status;
       }
-      if (((int *)pframe)[block-1])
+      if (((uint32_t *)pframe->pf_addr)[i])
         ++blocks;
     }
   }

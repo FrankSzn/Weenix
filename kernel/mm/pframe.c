@@ -285,7 +285,6 @@ static int pframe_fill(pframe_t *pf) {
  * @return 0 on success, < 0 on failure.
  */
 int pframe_get(struct mmobj *o, uint32_t pagenum, pframe_t **result) {
-  NOT_YET_IMPLEMENTED("S5FS: pframe_get");
   if (!result) return 0;
   *result = pframe_get_resident(o, pagenum);
   if (*result) { // Already resident
@@ -298,8 +297,9 @@ int pframe_get(struct mmobj *o, uint32_t pagenum, pframe_t **result) {
     int status = pframe_fill(*result);
     if (status) return status;
     pframe_pin(*result);
-    if (something) 
-      run pageoutd
+    // TODO: when to call pageout daemon
+    //if (something) 
+    //pageoutd_wakeup();
     pframe_unpin(*result);
   }
   return 0;
