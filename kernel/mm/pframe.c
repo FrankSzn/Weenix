@@ -289,14 +289,18 @@ int pframe_get(struct mmobj *o, uint32_t pagenum, pframe_t **result) {
   if (!result) return 0;
   *result = pframe_get_resident(o, pagenum);
   if (*result) { // Already resident
-    while (pframe_is_busy(*result)) // Wait until not busy
+    while (pframe_is_busy(*result)) {// Wait until not busy
       sched_cancellable_sleep_on(&(*result)->pf_waitq);
+      *result = pframe_get_resident(o, pagenum);
+    }
   } else { // Not resident, allocate new page
     *result = pframe_alloc(o, pagenum);
     int status = pframe_fill(*result);
     if (status) return status;
+    pframe_pin(*result);
     if (something) 
       run pageoutd
+    pframe_unpin(*result);
   }
   return 0;
 }

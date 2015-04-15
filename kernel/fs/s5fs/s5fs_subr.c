@@ -76,6 +76,7 @@ static void unlock_s5(s5fs_t *fs) { kmutex_unlock(&fs->s5f_mutex); }
  * @write a boolean indicating whether to write (1) or read (0)
  * */
 int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write) {
+  NOT_YET_IMPLEMENTED("S5FS: s5_file_op");
   pframe_t *pframe;
   size_t ndone_total = 0;
   // TODO: indirection, sparse files, file end, max file size
@@ -102,9 +103,10 @@ int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write
       dbg(DBG_S5FS, "pframe_get returned %d\n", status);
       return ndone_total;
     }
-    KASSERT(pframe->pf_addr);
     size_t offset = S5_DATA_OFFSET(seek);
     size_t ndone = MIN(len, S5_BLOCK_SIZE - offset);
+
+    // Do the operation on this page
     if (write) {
       memcpy(pframe->pf_addr + offset, buf + ndone_total, ndone);
       pframe_dirty(pframe);
@@ -144,7 +146,6 @@ int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write
  */
 int s5_write_file(vnode_t *vnode, off_t seek, const char *bytes, size_t len) {
   dbg(DBG_S5FS, "\n");
-  NOT_YET_IMPLEMENTED("S5FS: s5_write_file");
   return s5_file_op(vnode, seek, (char *)bytes, len, 1);
 }
 
@@ -516,6 +517,32 @@ int s5_link(vnode_t *parent, vnode_t *child, const char *name, size_t namelen) {
  */
 int s5_inode_blocks(vnode_t *vnode) {
   dbg(DBG_S5FS, "\n");
-  NOT_YET_IMPLEMENTED("S5FS: s5_inode_blocks");
-  return -1;
+  int blocks = 0;
+  // Get page frame
+  pframe_t *pframe;
+  mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
+  int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
+  if (status)
+    return status;
+  // Get inode
+  s5_inode_t *inode = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
+  // Look in the inode
+  for (int i = 0; i < S5_NDIRECT_BLOCKS; ++i) { 
+    if (inode->s5_direct_blocks[block-1])
+      ++blocks;
+  }
+  // Look in the indirect block
+  if (inode->s5_indirect_block) {
+    for (int i = 0; i < S5_NIDIRECT_BLOCKS; ++i) {
+      status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
+          inode->s5_indirect_block, &pframe);
+      if (status) {
+        dbg(DBG_S5FS, "pframe_get returned %d\n", status);
+        return status;
+      }
+      if (((int *)pframe)[block-1])
+        ++blocks;
+    }
+  }
+  return blocks;
 }

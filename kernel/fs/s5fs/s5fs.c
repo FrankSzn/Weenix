@@ -204,17 +204,38 @@ int s5fs_mount(struct fs *fs) {
  *
  */
 static void s5fs_read_vnode(vnode_t *vnode) {
-  NOT_YET_IMPLEMENTED("S5FS: s5fs_read_vnode");
+  // Get page frame
   pframe_t *pframe;
   mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
   int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
   KASSERT(!status);
-  s5_inode_t = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
-  /*     vn_ops
-   *     vn_mode
-   *         and vn_devid if appropriate
-   *     vn_len
-   *     vn_i*/
+  pframe_pin(pframe); // Pin frame
+  // Get inode
+  s5_inode_t *inode = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
+  ++inode->s5_linkcount; // Increment link count
+  // Set vn_i
+  vnode->vn_i = inode;
+  uint16_t type = inode->s5_type;
+  // Set devid
+  if ((S5_TYPE_CHR == type) || (S5_TYPE_BLK == type))
+    vnode->vn_devid = inode->s5_indirect_block;
+  // Set mode
+  if (type == S5_TYPE_FREE ||
+      (inode->s5_type == S5_TYPE_DATA)) 
+    vnode->vn_mode = S_IFREG;
+  else if (type == S5_TYPE_DIR) 
+    vnode->vn_mode = S_IFDIR;
+  else if (type == S5_TYPE_CHR) 
+    vnode->vn_mode = S_IFCHR;
+  else if (type == S5_TYPE_BLK) 
+    vnode->vn_mode = S_IFBLK;
+  // Set len
+  if (type == S5_TYPE_FREE)
+    vnode->vn_len = 0;
+  else
+    vnode->vn_len = inode->s5_un.s5_size;
+  // Set ops
+  vnode->vn_ops = s5fs_fsops;
 }
 
 /*
@@ -226,7 +247,19 @@ static void s5fs_read_vnode(vnode_t *vnode) {
  * the inode, and dont forget to unpin the page
  */
 static void s5fs_delete_vnode(vnode_t *vnode) {
-  NOT_YET_IMPLEMENTED("S5FS: s5fs_delete_vnode");
+  // Get page frame
+  pframe_t *pframe;
+  mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
+  int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
+  KASSERT(!status);
+  pframe_unpin(pframe); // Unpin frame
+  // Get inode
+  s5_inode_t *inode = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
+  --inode->s5_linkcount; // Decrement link count
+  KASSERT(inode->s5_linkcount >= 0);
+  // Free inode if link count zero
+  if (!inode->s5_linkcount)
+    s5_free_inode(vnode);
 }
 
 /*
@@ -237,8 +270,15 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
  *
  */
 static int s5fs_query_vnode(vnode_t *vnode) {
-  NOT_YET_IMPLEMENTED("S5FS: s5fs_query_vnode");
-  return 0;
+  // Get page frame
+  pframe_t *pframe;
+  mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
+  int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
+  KASSERT(!status);
+  // Get inode
+  s5_inode_t *inode = pframe->pf_addr + S5_INODE_OFFSET(vnode->vn_vno);
+  KASSERT(inode->s5_linkcount >= 0);
+  return inode->s5_linkcount > 0;
 }
 
 /*
