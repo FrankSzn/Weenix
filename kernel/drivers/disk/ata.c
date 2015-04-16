@@ -372,6 +372,7 @@ static void ata_intr_wrapper(regs_t *regs) {
  */
 static int ata_read(blockdev_t *bdev, char *data, blocknum_t blocknum,
                     unsigned int count) {
+  dbg(DBG_DISK, "blocknuma: %d count: %d\n", blocknum, count);
   int status = 0;
   for (unsigned i = 0; i < count * BLOCK_SIZE; i += BLOCK_SIZE) {
     status = ata_do_operation(bd_to_ata(bdev), data+i, blocknum, 0);
@@ -393,6 +394,7 @@ static int ata_read(blockdev_t *bdev, char *data, blocknum_t blocknum,
  */
 static int ata_write(blockdev_t *bdev, const char *data, blocknum_t blocknum,
                      unsigned int count) {
+  dbg(DBG_DISK, "\n");
   int status = 0;
   for (unsigned i = 0; i < count * BLOCK_SIZE; i += BLOCK_SIZE) {
     status = ata_do_operation(bd_to_ata(bdev), (char *)data+i, blocknum, 1);
@@ -498,25 +500,27 @@ static int ata_do_operation(ata_disk_t *adisk, char *data, blocknum_t blocknum,
   kmutex_lock(&adisk->ata_mutex);
   dbg(DBG_DISK, "acquired mutex\n");
   dma_load(adisk->ata_channel, data, BLOCK_SIZE);
-  
+  // Set sector 
   uint32_t secnum = blocknum * adisk->ata_sectors_per_block;
   ata_outb_reg(adisk->ata_channel, ATA_REG_SECCOUNT0, adisk->ata_sectors_per_block);
   ata_outb_reg(adisk->ata_channel, ATA_REG_LBA0, secnum & 0xFF);
   ata_outb_reg(adisk->ata_channel, ATA_REG_LBA1, (secnum >> 8) & 0xFF);
   ata_outb_reg(adisk->ata_channel, ATA_REG_LBA2, (secnum >> 16) & 0xFF);
+  // Set operation type
   if (write)
     ata_outb_reg(adisk->ata_channel, ATA_REG_COMMAND, ATA_CMD_WRITE_DMA);
   else
     ata_outb_reg(adisk->ata_channel, ATA_REG_COMMAND, ATA_CMD_READ_DMA);
   ata_pause(adisk->ata_channel);
   dma_start(adisk->ata_channel, ATA_CHANNELS[adisk->ata_channel].atac_busmaster, write); 
-  sched_sleep_on(&adisk->ata_waitq);
+  sched_sleep_on(&adisk->ata_waitq); // Wait for interrupt
   int status = ata_inb_reg(adisk->ata_channel, ATA_REG_STATUS);
   int error = 0;
   if (status & ATA_SR_ERR) {
-    int error = ata_inb_reg(adisk->ata_channel, ATA_REG_ERROR);
-    dma_reset(ATA_CHANNELS[adisk->ata_channel].atac_busmaster);
+    error = ata_inb_reg(adisk->ata_channel, ATA_REG_ERROR);
+    dbg(DBG_DISK, "ata error: %d\n", error);
   }
+  dma_reset(ATA_CHANNELS[adisk->ata_channel].atac_busmaster);
   kmutex_unlock(&adisk->ata_mutex);
   intr_setipl(old_ipl);
   return -1*error;

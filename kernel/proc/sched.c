@@ -90,10 +90,8 @@ void sched_sleep_on(ktqueue_t *q) {
   KASSERT(!curthr->kt_wchan);
   curthr->kt_state = KT_SLEEP;
   ktqueue_enqueue(q, curthr);
-  uint8_t old_ipl = intr_getipl();
   sched_switch();
   dbg(DBG_PROC, "thread %s woke up\n", curproc->p_comm);
-  intr_setipl(old_ipl);
   KASSERT(!curthr->kt_wchan);
   // TODO: what behavior when canceled?
   if (curthr->kt_cancelled)
@@ -113,10 +111,8 @@ int sched_cancellable_sleep_on(ktqueue_t *q) {
   KASSERT(!curthr->kt_wchan);
   curthr->kt_state = KT_SLEEP_CANCELLABLE;
   ktqueue_enqueue(q, curthr);
-  uint8_t old_ipl = intr_getipl();
   sched_switch();
   dbg(DBG_PROC, "thread %s woke up\n", curproc->p_comm);
-  intr_setipl(old_ipl);
   KASSERT(!curthr->kt_wchan);
   if (curthr->kt_cancelled)
     return -EINTR;
@@ -205,13 +201,12 @@ void sched_switch(void) {
   intr_setipl(IPL_HIGH);
   // Wait for interrupt if empty
   while (!(curthr = ktqueue_dequeue(&kt_runq))) {
-    //KASSERT(old_ipl == IPL_LOW);
-    intr_disable();
+    //intr_disable();
     intr_setipl(IPL_LOW);
     intr_wait();
     intr_setipl(IPL_HIGH);
   }
-  // Switch threads
+  // Switch procs
   curproc = curthr->kt_proc;
   // Reenable interupts
   KASSERT(curthr->kt_state == KT_RUN);

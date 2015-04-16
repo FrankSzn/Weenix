@@ -170,6 +170,7 @@ static void *idleproc_run(int arg1, void *arg2) {
   initthr->kt_proc->p_cwd = vfs_root_vn;
   curproc->p_cwd = vfs_root_vn;
   vref(vfs_root_vn); // Want to start with two references
+  vref(vfs_root_vn); // Want to start with two references
 
 /* Here you need to make the null, zero, and tty devices using mknod */
 /* You can't do this until you have VFS, check the include/drivers/dev.h
@@ -241,7 +242,7 @@ static kthread_t *initproc_create(void) {
 }
 
 void *aquire_mutex(int arg1, void *arg2) {
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 5; ++i) {
     kmutex_lock((kmutex_t *) arg2);
     dbg_print("Thread %d aquired mutex!\n", arg1);
     kmutex_unlock((kmutex_t *) arg2);
@@ -298,7 +299,7 @@ int test_procs(kshell_t *ks, int argc, char **argv) {
   dbg_print("%d\n", do_waitpid(proc1->p_pid, 0, NULL));
 
   dbg(DBG_INIT, "Creating threads\n");
-  const int nthreads = 100;
+  const int nthreads = 30;
   pid_t pids[nthreads];
   kmutex_t km;
   kmutex_init(&km);
@@ -352,19 +353,19 @@ void *test_disk(int argc, void *argv) {
 }
 
 int test_drivers(kshell_t *ks, int argc, char **argv) {
-  dbg(DBG_TERM, "two threads reading/writing to tty0\n");
-  proc_t *p1 = proc_create("p1");
-  proc_t *p2 = proc_create("p2");
-  sched_make_runnable(kthread_create(p1, &run_echo, 1, NULL));
-  sched_make_runnable(kthread_create(p2, &run_echo, 2, NULL));
-  do_waitpid(-1, 0, 0);
-  do_waitpid(-1, 0, 0);
+  //dbg(DBG_TERM, "two threads reading/writing to tty0\n");
+  //proc_t *p1 = proc_create("p1");
+  //proc_t *p2 = proc_create("p2");
+  //sched_make_runnable(kthread_create(p1, &run_echo, 1, NULL));
+  //sched_make_runnable(kthread_create(p2, &run_echo, 2, NULL));
+  //do_waitpid(-1, 0, 0);
+  //do_waitpid(-1, 0, 0);
   
   // TODO: read and write more than terminal buffer size
   
   // multiple threads reading/writing to disk
   dbg(DBG_DISK, "starting disk test\n");
-  const int ata_test_size = 5;
+  const int ata_test_size = 10;
   for (int i = 0; i < ata_test_size; ++i) {
     char name[2];
     name[0] = i + '0';
@@ -373,10 +374,11 @@ int test_drivers(kshell_t *ks, int argc, char **argv) {
     sched_make_runnable(kthread_create(p, &test_disk, i, NULL));
   }
   while (-ECHILD != do_waitpid(-1, 0, NULL));
+  dbg(DBG_DISK, "verifying written data\n");
   char *data = page_alloc();
   blockdev_t *disk = blockdev_lookup(MKDEVID(1,0));
-  for (int i = 0; ata_test_size; i += BLOCK_SIZE) {
-    KASSERT(!disk->bd_ops->read_block(disk, data, 0, ata_test_size-1));
+  for (int i = 0; i < ata_test_size; ++i) {
+    KASSERT(!disk->bd_ops->read_block(disk, data, i, 1));
     KASSERT(data[0] == i);
   }
   page_free(data);

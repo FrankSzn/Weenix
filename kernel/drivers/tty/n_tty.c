@@ -180,9 +180,8 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
   } else if (nt->rawtail + 1 != nt->rhead) {
     *get_rawtail(nt) = c;
     ++(nt->rawtail);
-    dbg(DBG_TERM, "added %c, new rawtail %d\n", c, nt->rawtail);
-    // TODO: ask mentor about EOF (count as new line)
-    if (c == '\r' || c == '\n') { // New line
+    dbg(DBG_TERM, "added 0x%x, new rawtail %d\n", c, nt->rawtail);
+    if (c == '\r' || c == '\n' || c == 0) { // New line
       nt->ckdtail = nt->rawtail;
       sched_broadcast_on(&nt->rwaitq);
     }

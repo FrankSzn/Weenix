@@ -112,10 +112,10 @@ proc_t *proc_create(char *name) {
 
   for (int i = 0; i < NFILES; ++i)
     new_proc->p_files[i] = NULL; // open files
-  if (vfs_root_vn) vref(vfs_root_vn);
-  else {
+  if (vfs_root_vn) 
+    vref(vfs_root_vn);
+  else 
     dbg(DBG_VFS, "proc %s unable to vput\n", name);
-  }
   new_proc->p_cwd = vfs_root_vn; // current working dir 
 
   // Fields unset:
@@ -171,10 +171,12 @@ void proc_cleanup(int status) {
   // Wake parent
   sched_broadcast_on(&curproc->p_pproc->p_wait);
 
+  // Clean up files
   for (int i = 0; i < NFILES; ++i) {
     if (curproc->p_files[i])
       do_close(i);
   }
+  if (curproc->p_cwd) vput(curproc->p_cwd);
 
   // TODO: clean up VM mappings
 }
@@ -307,7 +309,7 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
     list_iterate_end();
     if (!found)
       return -ECHILD;
-    sched_cancellable_sleep_on(&curproc->p_wait); // TODO: what kind of sleep?
+    sched_cancellable_sleep_on(&curproc->p_wait);
   }
 }
 
