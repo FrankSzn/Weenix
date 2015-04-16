@@ -103,6 +103,7 @@ static int blockdev_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
 }
 
 static int blockdev_fillpage(mmobj_t *o, pframe_t *pf) {
+  dbg(DBG_DISK, "\n");
   KASSERT(pf && pf->pf_obj);
   /* Find the corresponding blockdev */
   blockdev_t *bd = CONTAINER_OF(pf->pf_obj, blockdev_t, bd_mmobj);
@@ -111,9 +112,13 @@ static int blockdev_fillpage(mmobj_t *o, pframe_t *pf) {
 }
 
 /* block devices don't need to make use of this entry point: */
-static int blockdev_dirtypage(mmobj_t *o, pframe_t *pf) { return 0; }
+static int blockdev_dirtypage(mmobj_t *o, pframe_t *pf) { 
+  dbg(DBG_DISK, "\n");
+  return 0; 
+}
 
 static int blockdev_cleanpage(mmobj_t *o, pframe_t *pf) {
+  dbg(DBG_DISK, "\n");
   KASSERT(pf && pf->pf_obj);
   /* Find the corresponding blockdev */
   blockdev_t *bd = CONTAINER_OF(pf->pf_obj, blockdev_t, bd_mmobj);

@@ -202,7 +202,6 @@ int do_mknod(const char *path, int mode, unsigned devid) {
   }
   dbg(DBG_VFS, "making node: %s\n", path);
   status = dir->vn_ops->mknod(dir, name, namelen, mode, devid);
-  dbg(DBG_VFS, "calling vput\n");
   vput(dir);
   return status;
 }
@@ -227,19 +226,23 @@ int do_mkdir(const char *path) {
   size_t namelen;
   const char *name;
   int ret_code = dir_namev(path, &namelen, &name, NULL, &dir);
-  if (ret_code)
+  if (ret_code) {
+    dbg(DBG_VFS, "dir_namev returned %d\n", ret_code);
     return ret_code;
+  }
 
   // Check if already exists
   vnode_t *result = NULL;
   ret_code = lookup(dir, name, namelen, &result);
   if (result) {
+    dbg(DBG_VFS, "already exists!\n");
     vput(dir);
     vput(result);
     return -EEXIST;
   }
 
   ret_code = dir->vn_ops->mkdir(dir, name, namelen);
+  dbg(DBG_VFS, "vnode mkdir returned %d\n", ret_code);
   vput(dir);
   return ret_code;
 }

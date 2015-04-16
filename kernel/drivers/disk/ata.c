@@ -372,7 +372,7 @@ static void ata_intr_wrapper(regs_t *regs) {
  */
 static int ata_read(blockdev_t *bdev, char *data, blocknum_t blocknum,
                     unsigned int count) {
-  dbg(DBG_DISK, "blocknuma: %d count: %d\n", blocknum, count);
+  dbg(DBG_DISK, "blocknum: %d count: %d\n", blocknum, count);
   int status = 0;
   for (unsigned i = 0; i < count * BLOCK_SIZE; i += BLOCK_SIZE) {
     status = ata_do_operation(bd_to_ata(bdev), data+i, blocknum, 0);

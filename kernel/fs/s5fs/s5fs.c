@@ -119,6 +119,7 @@ static vnode_ops_t s5fs_file_vops = {.read = s5fs_read,
  * Return 0 on success, negative on failure.
  */
 int s5fs_mount(struct fs *fs) {
+  dbg(DBG_S5FS, "\n");
   int num;
   blockdev_t *dev;
   s5fs_t *s5;
@@ -152,6 +153,7 @@ int s5fs_mount(struct fs *fs) {
 
   if (s5_check_super(s5->s5f_super)) {
     /* corrupt */
+    panic("super block corrupt!\n");
     kfree(s5);
     return -EINVAL;
   }
@@ -204,10 +206,12 @@ int s5fs_mount(struct fs *fs) {
  *
  */
 static void s5fs_read_vnode(vnode_t *vnode) {
+  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
   // Get page frame
   pframe_t *pframe;
   mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
-  int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
+  int status = pframe_get(mmobj, S5_INODE_BLOCK(vnode->vn_vno), 
+      &pframe);
   KASSERT(!status);
   pframe_pin(pframe); // Pin frame
   // Get inode
@@ -218,10 +222,7 @@ static void s5fs_read_vnode(vnode_t *vnode) {
   vnode->vn_i = inode;
   uint16_t type = inode->s5_type;
   // Set devid
-  if ((S5_TYPE_CHR == type) || (S5_TYPE_BLK == type))
-    vnode->vn_devid = inode->s5_indirect_block;
-  else
-    vnode->vn_devid = NULL;
+  vnode->vn_devid = NULL;
   // Set mode and ops
   if (type == S5_TYPE_FREE ||
       (inode->s5_type == S5_TYPE_DATA)) {
@@ -233,15 +234,20 @@ static void s5fs_read_vnode(vnode_t *vnode) {
   } else if (type == S5_TYPE_CHR) {
     vnode->vn_mode = S_IFCHR;
     vnode->vn_ops = NULL;
+    vnode->vn_devid = inode->s5_indirect_block;
   } else if (type == S5_TYPE_BLK) {
     vnode->vn_mode = S_IFBLK;
     vnode->vn_ops = NULL;
+    vnode->vn_devid = inode->s5_indirect_block;
+  } else {
+    panic("invalid inode mode!\n");
   }
   // Set len
   if (type == S5_TYPE_FREE)
     vnode->vn_len = 0;
   else
     vnode->vn_len = inode->s5_size;
+  dbg(DBG_S5FS, "read vno: %d linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
 }
 
 /*
@@ -250,23 +256,25 @@ static void s5fs_read_vnode(vnode_t *vnode) {
  * When this function returns, the inode refcount should be decremented.
  *
  * You probably want to use s5_free_inode() if there are no more links to
- * the inode, and dont forget to unpin the page
+ * the inode, and don't forget to unpin the page
  */
 static void s5fs_delete_vnode(vnode_t *vnode) {
+  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
   // Get page frame
   pframe_t *pframe;
   mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
-  int status = pframe_get(mmobj, vnode->vn_vno, &pframe);
+  int status = pframe_get(mmobj, S5_INODE_BLOCK(vnode->vn_vno), &pframe);
   KASSERT(!status);
-  pframe_unpin(pframe); // Unpin frame
   // Get inode
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   // Decrement link count
   --inode->s5_linkcount; 
   KASSERT(inode->s5_linkcount >= 0);
   // Free inode if link count zero
+  pframe_unpin(pframe); // Unpin frame
   if (!inode->s5_linkcount)
     s5_free_inode(vnode);
+  dbg(DBG_S5FS, "vno: %d, linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
 }
 
 /*
@@ -277,6 +285,7 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
  *
  */
 static int s5fs_query_vnode(vnode_t *vnode) {
+  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
   // Get inode
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(inode->s5_linkcount >= 0);
@@ -288,21 +297,22 @@ static int s5fs_query_vnode(vnode_t *vnode) {
  * vput root vnode
  */
 static int s5fs_umount(fs_t *fs) {
+  dbg(DBG_S5FS, "\n");
   s5fs_t *s5 = (s5fs_t *)fs->fs_i;
   blockdev_t *bd = s5->s5f_bdev;
   pframe_t *sbp;
   int ret;
 
-  if (s5fs_check_refcounts(fs)) {
-    dbg(DBG_PRINT, "s5fs_umount: WARNING: linkcount corruption "
-                   "discovered in fs on block device with major %d "
-                   "and minor %d!!\n",
-        MAJOR(bd->bd_id), MINOR(bd->bd_id));
-    panic("s5fs_umount: WARNING: linkcount corruption "
-          "discovered in fs on block device with major %d "
-          "and minor %d!!\n",
-          MAJOR(bd->bd_id), MINOR(bd->bd_id));
-  }
+  //if (s5fs_check_refcounts(fs)) {
+  //  dbg(DBG_PRINT, "s5fs_umount: WARNING: linkcount corruption "
+  //                 "discovered in fs on block device with major %d "
+  //                 "and minor %d!!\n",
+  //      MAJOR(bd->bd_id), MINOR(bd->bd_id));
+  //  panic("s5fs_umount: WARNING: linkcount corruption "
+  //        "discovered in fs on block device with major %d "
+  //        "and minor %d!!\n",
+  //        MAJOR(bd->bd_id), MINOR(bd->bd_id));
+  //}
   if (s5_check_super(s5->s5f_super)) {
     dbg(DBG_PRINT, "s5fs_umount: WARNING: corrupted superblock "
                    "discovered on fs on block device with major %d "
@@ -314,8 +324,10 @@ static int s5fs_umount(fs_t *fs) {
           MAJOR(bd->bd_id), MINOR(bd->bd_id));
   }
 
+  dbg(DBG_S5FS, "flushing all vnodes\n");
   vnode_flush_all(fs);
 
+  dbg(DBG_S5FS, "vput root\n");
   vput(fs->fs_root);
 
   if (0 > (ret = pframe_get(S5FS_TO_VMOBJ(s5), S5_SUPER_BLOCK, &sbp))) {
@@ -375,7 +387,7 @@ static int s5fs_write(vnode_t *vnode, off_t offset, const void *buf,
                       size_t len) {
   dbg(DBG_S5FS, "\n");
   kmutex_lock(&vnode->vn_mutex);
-  int status = s5_write(vnode, offset, (char *)buf, len);
+  int status = s5_write_file(vnode, offset, (char *)buf, len);
   kmutex_unlock(&vnode->vn_mutex);
   return status;
 }
@@ -409,16 +421,18 @@ static int s5fs_create(vnode_t *dir, const char *name, size_t namelen,
   kmutex_lock(&dir->vn_mutex);
   int ino = s5_alloc_inode(dir->vn_fs, S5_TYPE_DATA, dir->vn_devid);
   if (ino < 0) {
+    dbg(DBG_S5FS, "alloc_inode error: %d\n", ino);
     kmutex_unlock(&dir->vn_mutex);
     return ino;
   }
   vnode_t *vnode = vget(dir->vn_fs, ino);
-  if (result)
-    *result = vnode;
+  kmutex_lock(&vnode->vn_mutex);
+  if (result) *result = vnode;
   int status = s5_link(dir, vnode, name, namelen);
   kmutex_unlock(&dir->vn_mutex);
+  kmutex_unlock(&vnode->vn_mutex);
   KASSERT(vnode->vn_refcount == 1);
-  // TODO: KASSERT inode refcount is 2
+  KASSERT(VNODE_TO_S5INODE(vnode)->s5_linkcount == 2);
   return status;
 }
 
@@ -449,8 +463,11 @@ static int s5fs_mknod(vnode_t *dir, const char *name, size_t namelen, int mode,
     return ino;
   }
   vnode_t *vnode = vget(dir->vn_fs, ino);
+  kmutex_lock(&vnode->vn_mutex);
   int status = s5_link(dir, vnode, name, namelen);
   kmutex_unlock(&dir->vn_mutex);
+  kmutex_unlock(&vnode->vn_mutex);
+  vput(vnode);
   return status;
 }
 
@@ -487,8 +504,7 @@ int s5fs_lookup(vnode_t *base, const char *name, size_t namelen,
 static int s5fs_link(vnode_t *src, vnode_t *dir, const char *name,
                      size_t namelen) {
   dbg(DBG_S5FS, "\n");
-  if (namelen > S5_NAME_LEN)
-    return -ENAMETOOLONG;
+  if (namelen > S5_NAME_LEN) return -ENAMETOOLONG;
   kmutex_lock(&src->vn_mutex);
   kmutex_lock(&dir->vn_mutex);
   int status = s5_link(dir, src, name, namelen);
@@ -537,36 +553,43 @@ static int s5fs_unlink(vnode_t *dir, const char *name, size_t namelen) {
  */
 static int s5fs_mkdir(vnode_t *dir, const char *name, size_t namelen) {
   dbg(DBG_S5FS, "\n");
-  if (namelen > S5_NAME_LEN)
-    return -ENAMETOOLONG;
+  if (namelen > S5_NAME_LEN) return -ENAMETOOLONG;
   kmutex_lock(&dir->vn_mutex);
   // Get new inode/vnode
   int ino = s5_alloc_inode(dir->vn_fs, S5_TYPE_DIR, dir->vn_devid);
   if (ino < 0) {
+    dbg(DBG_S5FS, "alloc_inode error: %d\n", ino);
     kmutex_unlock(&dir->vn_mutex);
     return ino;
   }
   vnode_t *new_dir = vget(dir->vn_fs, ino);
+  kmutex_lock(&new_dir->vn_mutex);
   // Link new vno to directory
   int status = s5_link(dir, new_dir, name, namelen);
   if (status) {
     vput(new_dir);
     kmutex_unlock(&dir->vn_mutex);
+    kmutex_unlock(&new_dir->vn_mutex);
     return status;
   }
   // Create . and .. entries
   status = s5_link(new_dir, new_dir, ".", 1);
   if (status) {
     kmutex_unlock(&dir->vn_mutex);
+    kmutex_unlock(&new_dir->vn_mutex);
     return status;
   }
   status = s5_link(new_dir, dir, "..", 2);
   if (status) {
     kmutex_unlock(&dir->vn_mutex);
+    kmutex_unlock(&new_dir->vn_mutex);
     return status;
   }
   kmutex_unlock(&dir->vn_mutex);
-  KASSERT(new_dir->vn_refcount == 2);
+  kmutex_unlock(&new_dir->vn_mutex);
+  vput(new_dir);
+  // TODO: what the fuck happens to this vnode?
+  KASSERT(new_dir->vn_refcount == 1);
   return status;
 }
 
@@ -634,11 +657,18 @@ static int s5fs_rmdir(vnode_t *parent, const char *name, size_t namelen) {
  * number of bytes read.
  */
 static int s5fs_readdir(vnode_t *vnode, off_t offset, struct dirent *d) {
-  dbg(DBG_S5FS, "\n");
+  if (offset >= vnode->vn_len)
+    return 0;
   kmutex_lock(&vnode->vn_mutex);
-  int status = s5_read_file(vnode, offset, (char *) d, sizeof(dirent_t));
+  s5_dirent_t dirent;
+  int nread = s5_read_file(vnode, offset, (char *)&dirent, sizeof(s5_dirent_t));
+  KASSERT(nread == sizeof(s5_dirent_t) || nread == 0);
   kmutex_unlock(&vnode->vn_mutex);
-  return status;
+  d->d_off = 0;
+  d->d_ino = dirent.s5d_inode;
+  strcpy((char *) &d->d_name, (const char *) &dirent.s5d_name);
+  dbg(DBG_S5FS, "%s ino: %d\n", d->d_name, d->d_ino);
+  return nread;
 }
 
 /*
@@ -673,23 +703,25 @@ static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
  * read_block function.
  */
 static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
-  dbg(DBG_S5FS, "\n");
+  dbg(DBG_S5FS, "vno: %d offset: %d mmobj: %p\n", vnode->vn_vno, offset, vnode->vn_mmobj);
+  KASSERT(vnode);
+  KASSERT(pagebuf);
   KASSERT(PAGE_ALIGNED(pagebuf));
-  kmutex_lock(&vnode->vn_mutex);
+  KASSERT(vnode->vn_mutex.km_holder == curthr);
   // Find block
   int block_no = s5_seek_to_block(vnode, offset, 0);
   if (block_no < 0) { // Error
-    kmutex_unlock(&vnode->vn_mutex);
+    dbg(DBG_S5FS, "seek error: %d\n", block_no);
     return block_no;
   }
   int status = 0;
-  if (block_no) {// Non-sparse block
-    status = vnode->vn_bdev->bd_ops->read_block(vnode->vn_bdev, 
-        (char *)pagebuf, block_no, 1);
+  if (block_no) { // Non-sparse block
+    dbg(DBG_S5FS, "reading block\n");
+    status = VNODE_TO_S5FS(vnode)->s5f_bdev->bd_ops->read_block(
+        VNODE_TO_S5FS(vnode)->s5f_bdev, (char *)pagebuf, block_no, 1);
   } else { // Sparse block, fill with zeros
     memset(pagebuf, 0, S5_BLOCK_SIZE);
   }
-  kmutex_unlock(&vnode->vn_mutex);
   return status;
 }
 
@@ -708,17 +740,15 @@ static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
  * Much of this can be done with s5_seek_to_block()
  */
 static int s5fs_dirtypage(vnode_t *vnode, off_t offset) {
-  dbg(DBG_S5FS, "\n");
-  kmutex_lock(&vnode->vn_mutex);
+  dbg(DBG_S5FS, "vno: %d offset: %d\n", vnode->vn_vno, offset);
+  KASSERT(curthr == vnode->vn_mutex.km_holder);
   // Verify this is a sparse region
   int status = s5_seek_to_block(vnode, offset, 0);
   if (status <= 0) { 
-    kmutex_unlock(&vnode->vn_mutex);
     return status;
   }
   // Attempt to make not sparse
   status = s5_seek_to_block(vnode, offset, 1);
-  kmutex_unlock(&vnode->vn_mutex);
   return status;
 }
 
@@ -726,17 +756,17 @@ static int s5fs_dirtypage(vnode_t *vnode, off_t offset) {
  * Like fillpage, but for writing.
  */
 static int s5fs_cleanpage(vnode_t *vnode, off_t offset, void *pagebuf) {
-  dbg(DBG_S5FS, "\n");
+  dbg(DBG_S5FS, "vno: %d offset: %d\n", vnode->vn_vno, offset);
   KASSERT(PAGE_ALIGNED(pagebuf));
+  KASSERT(!vnode->vn_mutex.km_holder);
   kmutex_lock(&vnode->vn_mutex);
   // Find block
   int block_no = s5_seek_to_block(vnode, offset, 1);
   if (block_no <= 0) { // Error
-    kmutex_unlock(&vnode->vn_mutex);
     return block_no;
   }
-  int status = vnode->vn_bdev->bd_ops->write_block(vnode->vn_bdev, 
-      (char *)pagebuf, block_no, 1);
+  int status = VNODE_TO_S5FS(vnode)->s5f_bdev->bd_ops->write_block(
+      VNODE_TO_S5FS(vnode)->s5f_bdev, (char *)pagebuf, block_no, 1);
   kmutex_unlock(&vnode->vn_mutex);
   return status;
 }

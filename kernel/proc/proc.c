@@ -115,7 +115,7 @@ proc_t *proc_create(char *name) {
   if (vfs_root_vn) 
     vref(vfs_root_vn);
   else 
-    dbg(DBG_VFS, "proc %s unable to vput\n", name);
+    dbg(DBG_VFS, "proc %s unable to vref\n", name);
   new_proc->p_cwd = vfs_root_vn; // current working dir 
 
   // Fields unset:

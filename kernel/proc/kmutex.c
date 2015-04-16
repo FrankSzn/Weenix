@@ -60,7 +60,7 @@ int kmutex_lock_cancellable(kmutex_t *mtx) {
  * @param mtx the mutex to unlock
  */
 void kmutex_unlock(kmutex_t *mtx) {
-  KASSERT(mtx->km_holder); // Make sure the mutex is locked
+  KASSERT(mtx->km_holder && mtx->km_holder == curthr); // Make sure the mutex is locked
   mtx->km_holder = NULL;
   sched_wakeup_on(&mtx->km_waitq);
 }

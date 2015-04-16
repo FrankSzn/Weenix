@@ -294,13 +294,15 @@ int pframe_get(struct mmobj *o, uint32_t pagenum, pframe_t **result) {
     }
   } else { // Not resident, allocate new page
     *result = pframe_alloc(o, pagenum);
+    dbg(DBG_PFRAME, "allocated new pframe %p\n", *result);
     int status = pframe_fill(*result);
     if (status) return status;
-    pframe_pin(*result);
-    // TODO: when to call pageout daemon
-    //if (something) 
-    //pageoutd_wakeup();
-    pframe_unpin(*result);
+    if (page_free_count() == nfreepages_target) {
+      pframe_pin(*result);
+      pageoutd_wakeup();
+      sched_sleep_on(&alloc_waitq);
+      pframe_unpin(*result);
+    }
   }
   return 0;
 }
@@ -357,6 +359,7 @@ void pframe_migrate(pframe_t *pf, mmobj_t *dest) {
  * @param pf the page to pin
  */
 void pframe_pin(pframe_t *pf) { 
+  dbg(DBG_PFRAME, "%d\n", pf->pf_pagenum);
   KASSERT(pf->pf_pincount >= 0);
   if (!pf->pf_pincount++) {
     list_remove(&pf->pf_link);
@@ -377,6 +380,7 @@ void pframe_pin(pframe_t *pf) {
  * @param pf a pinned page (a page with a positive pin count)
  */
 void pframe_unpin(pframe_t *pf) { 
+  dbg(DBG_PFRAME, "%d\n", pf->pf_pagenum);
   if (!--pf->pf_pincount) {
     list_remove(&pf->pf_link);
     list_insert_tail(&alloc_list, &pf->pf_link);
@@ -399,6 +403,8 @@ void pframe_unpin(pframe_t *pf) {
  * @return 0 on success, -errno on failure
  */
 int pframe_dirty(pframe_t *pf) {
+  dbg(DBG_PFRAME, "page %d of obj %p, &p: %p\n", pf->pf_pagenum,
+      pf->pf_obj, pf);
   int ret;
 
   KASSERT(!pframe_is_busy(pf));
@@ -424,6 +430,8 @@ int pframe_dirty(pframe_t *pf) {
  * @return 0 on success, -errno on failure
  */
 int pframe_clean(pframe_t *pf) {
+  dbg(DBG_PFRAME, "page %d of obj %p, &p: %p\n", pf->pf_pagenum,
+      pf->pf_obj, pf);
   int ret;
 
   KASSERT(pframe_is_dirty(pf) && "Cleaning page that isn't dirty!");

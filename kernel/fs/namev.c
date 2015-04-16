@@ -92,6 +92,7 @@ int dir_namev(const char *pathname, size_t *namelen, const char **name,
   }
   // Set namelen, name, res_vnode
   if (!S_ISDIR(base->vn_mode)) {
+    dbg(DBG_VFS, "inode %d is not a directory\n", base->vn_vno);
     vput(base);
     return -ENOTDIR;
   }
