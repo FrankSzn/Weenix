@@ -413,6 +413,8 @@ int pframe_dirty(pframe_t *pf) {
 
   if (!(ret = pf->pf_obj->mmo_ops->dirtypage(pf->pf_obj, pf))) {
     pframe_set_dirty(pf);
+  } else {
+    dbg(DBG_PFRAME, "couldn't dirty, error: %d\n", ret);
   }
   pframe_clear_busy(pf);
   sched_broadcast_on(&pf->pf_waitq);

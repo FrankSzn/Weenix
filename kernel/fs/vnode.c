@@ -357,7 +357,7 @@ clean:
   list_iterate_begin(&vnode_inuse_list, v, vnode_t, vn_link) {
     list_iterate_begin(&v->vn_mmobj.mmo_respages, p, pframe_t, pf_olink) {
       dbg(DBG_VFS, "vno: %d pno: %d pflags: %d &p: %p\n", v->vn_vno, p->pf_pagenum, 
-          p->pf_flags, p);
+          p->pf_flags, &p->pf_flags);
       if (pframe_is_dirty(p)) {
         if (0 > (err = pframe_clean(p))) {
           dbg(DBG_VFS, "vnode_flush_all: WARNING: failed to clean page %d of "

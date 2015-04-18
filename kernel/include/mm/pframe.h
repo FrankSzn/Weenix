@@ -12,25 +12,6 @@ struct mmobj;
 #define PF_BUSY 0x01
 #define PF_DIRTY 0x02
 
-#define pframe_is_busy(pf) ((pf)->pf_flags & PF_BUSY)
-#define pframe_set_busy(pf)                                                    \
-  do {                                                                         \
-    (pf)->pf_flags |= PF_BUSY;                                                 \
-  } while (0)
-#define pframe_clear_busy(pf)                                                  \
-  do {                                                                         \
-    (pf)->pf_flags &= ~PF_BUSY;                                                \
-  } while (0)
-
-#define pframe_is_dirty(pf) ((pf)->pf_flags & PF_DIRTY)
-#define pframe_set_dirty(pf)                                                   \
-  do {                                                                         \
-    (pf)->pf_flags |= PF_DIRTY;                                                \
-  } while (0)
-#define pframe_clear_dirty(pf)                                                 \
-  do {                                                                         \
-    (pf)->pf_flags &= ~PF_DIRTY;                                               \
-  } while (0)
 
 #define pframe_is_pinned(pf) ((pf)->pf_pincount)
 #define pframe_is_free(pf) (!(pf)->pf_obj)
@@ -58,6 +39,25 @@ typedef struct pframe {
   list_link_t pf_hlink; /* link on hash chain of resident page hash */
   list_link_t pf_olink; /* link on object's list of resident pages */
 } pframe_t;
+
+static inline uint8_t pframe_is_busy(pframe_t *pf) {
+  return pf->pf_flags & PF_BUSY;
+}
+static inline void pframe_set_busy(pframe_t *pf) {
+  pf->pf_flags |= PF_BUSY;
+}
+static inline void pframe_clear_busy(pframe_t *pf) {
+  pf->pf_flags &= ~PF_BUSY;
+}
+static inline uint8_t pframe_is_dirty(pframe_t *pf) {
+  return pf->pf_flags & PF_DIRTY;
+}
+static inline void pframe_set_dirty(pframe_t *pf) {
+  pf->pf_flags |= PF_DIRTY;
+} 
+static inline void pframe_clear_dirty(pframe_t *pf) {
+  pf->pf_flags &= ~PF_DIRTY;
+}
 
 void pframe_init(void);
 void pframe_add_range(uint32_t startpfn, uint32_t endpfn);

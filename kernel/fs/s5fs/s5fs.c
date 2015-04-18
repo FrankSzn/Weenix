@@ -703,7 +703,7 @@ static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
  * read_block function.
  */
 static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
-  dbg(DBG_S5FS, "vno: %d offset: %d mmobj: %p\n", vnode->vn_vno, offset, vnode->vn_mmobj);
+  dbg(DBG_S5FS, "vno: %d offset: %d mmobj: %p\n", vnode->vn_vno, offset, &vnode->vn_mmobj);
   KASSERT(vnode);
   KASSERT(pagebuf);
   KASSERT(PAGE_ALIGNED(pagebuf));
@@ -744,12 +744,17 @@ static int s5fs_dirtypage(vnode_t *vnode, off_t offset) {
   KASSERT(curthr == vnode->vn_mutex.km_holder);
   // Verify this is a sparse region
   int status = s5_seek_to_block(vnode, offset, 0);
-  if (status <= 0) { 
+  if (status >= 0) { 
+    return 0;
+  } else if (status < 0) {
     return status;
   }
   // Attempt to make not sparse
   status = s5_seek_to_block(vnode, offset, 1);
-  return status;
+  if (status < 0)
+    return status;
+  else
+    return 0;
 }
 
 /*
