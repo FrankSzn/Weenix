@@ -49,5 +49,6 @@
  *              can be found in pagefault.h
  */
 void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
+  curproc->p_vmmap;
   NOT_YET_IMPLEMENTED("VM: handle_pagefault");
 }

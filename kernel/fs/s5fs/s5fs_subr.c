@@ -111,7 +111,7 @@ static void unlock_s5(s5fs_t *fs) { kmutex_unlock(&fs->s5f_mutex); }
 /* Abstraction for both reading and writing files
  * @write a boolean indicating whether to write (1) or read (0)
  * */
-int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write) {
+int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int write) {
   KASSERT(vnode->vn_mode == S_IFDIR || vnode->vn_mode == S_IFREG);
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(seek >= 0);
@@ -127,8 +127,7 @@ int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write
   pframe_t *pframe;
   size_t ndone_total = 0;
   while (len) {
-    blocknum_t blocknum = S5_DATA_BLOCK(seek);
-    //int status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), blocknum, &pframe);
+    blocknum_t blocknum = S5_DATA_BLOCK(seek + ndone_total);
     int status = pframe_get(&vnode->vn_mmobj, blocknum, &pframe);
     if (status) {
       dbg(DBG_S5FS, "pframe_get error: %d\n", status);

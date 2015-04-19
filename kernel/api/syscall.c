@@ -53,20 +53,56 @@ init_func(syscall_init);
  *    set curthr->kt_errno and return -1
  */
 static int sys_read(read_args_t *arg) {
-  NOT_YET_IMPLEMENTED("VM: sys_read");
-  return -1;
+  read_args_t kern_args;
+  int err;
+  int nread;
+  if ((err = copy_from_user(&kern_args, arg, sizeof(read_args_t))) < 0) {
+    curthr->kt_errno = -err;
+    return -1;
+  }
+  void *temp = page_alloc();
+  if ((err = do_read(kern_args.fd, temp, kern_args.nbytes)) < 0) {
+    curthr->kt_errno = err;
+    page_free(temp);
+    return -1;
+  }
+  nread = err;
+  if ((err = copy_to_user(arg->buf, temp, nread)) < 0) {
+    curthr->kt_errno = -err;
+    page_free(temp);
+    return -1;
+  }
+  page_free(temp);
+  return nread;
 }
 
 /*
  * This function is almost identical to sys_read.  See comments above.
  */
 static int sys_write(write_args_t *arg) {
-  NOT_YET_IMPLEMENTED("VM: sys_write");
-  return -1;
+  write_args_t kern_args;
+  int err;
+  if ((err = copy_from_user(&kern_args, arg, sizeof(write_args_t))) < 0) {
+    curthr->kt_errno = -err;
+    return -1;
+  }
+  void *temp = page_alloc();
+  if ((err = copy_from_user(temp, arg->buf, kern_args.nbytes)) < 0) {
+    curthr->kt_errno = -err;
+    page_free(temp);
+    return -1;
+  }
+  if ((err = do_write(kern_args.fd, temp, kern_args.nbytes)) < 0) {
+    curthr->kt_errno = err;
+    page_free(temp);
+    return -1;
+  }
+  page_free(temp);
+  return err;
 }
 
 /*
- * This is another tricly sys_* function that you will need to write.
+ * This is another tricky sys_* function that you will need to write.
  * It's pretty similar to sys_read(), but you don't need
  * to allocate a whole page, just a single dirent_t. call do_getdents in a
  * loop until you have read getdent_args_t->count bytes (or an error
@@ -75,8 +111,29 @@ static int sys_write(write_args_t *arg) {
  * a max of something like count / sizeof(dirent_t) times.
  */
 static int sys_getdents(getdents_args_t *arg) {
-  NOT_YET_IMPLEMENTED("VM: sys_getdents");
-  return -1;
+  getdents_args_t kern_args;
+  int err;
+  if ((err = copy_from_user(&kern_args, arg, sizeof(getdents_args_t))) < 0) {
+    curthr->kt_errno = -err;
+    return -1;
+  }
+  dirent_t dirent;
+  size_t nread;
+  for (nread = 0; nread < kern_args.count; nread += sizeof(dirent_t)) {
+    if ((err = do_getdent(kern_args.fd, &dirent)) < 0) {
+      curthr->kt_errno = err;
+      return -1;
+    }
+    if ((err = copy_to_user(arg->dirp + nread * sizeof(dirent_t), 
+            &dirent, sizeof(dirent_t))) < 0) {
+      curthr->kt_errno = -err;
+      return -1;
+    }
+    if (err == 0) // End of directory
+      return 0;
+    KASSERT(err == sizeof(dirent_t));
+  }
+  return nread;
 }
 
 #ifdef __MOUNTING__

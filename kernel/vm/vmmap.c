@@ -50,20 +50,43 @@ void vmarea_free(vmarea_t *vma) {
 /* Create a new vmmap, which has no vmareas and does
  * not refer to a process. */
 vmmap_t *vmmap_create(void) {
-  NOT_YET_IMPLEMENTED("VM: vmmap_create");
-  return NULL;
+  dbg(DBG_VMMAP, "\n");
+  vmmap_t *vmmap = slab_obj_alloc(vmmap_allocator);
+  KASSERT(vmmap);
+  list_init(&vmmap->vmm_list);
+  vmmap->vmm_proc = NULL;
+  return vmmap;
 }
 
 /* Removes all vmareas from the address space and frees the
  * vmmap struct. */
-void vmmap_destroy(vmmap_t *map) { NOT_YET_IMPLEMENTED("VM: vmmap_destroy"); }
+void vmmap_destroy(vmmap_t *map) { 
+  dbg(DBG_VMMAP, "\n");
+  KASSERT(map);
+  vmarea_t *vma;
+  list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+    list_remove(&vma->vma_olink);
+    list_remove(&vma->vma_plink);
+    vmarea_free(vma);
+  } list_iterate_end();
+  slab_obj_free(vmmap_allocator, map);
+}
 
 /* Add a vmarea to an address space. Assumes (i.e. asserts to some extent)
  * the vmarea is valid.  This involves finding where to put it in the list
  * of VM areas, and adding it. Don't forget to set the vma_vmmap for the
  * area. */
 void vmmap_insert(vmmap_t *map, vmarea_t *newvma) {
-  NOT_YET_IMPLEMENTED("VM: vmmap_insert");
+  dbg(DBG_VMMAP, "\n");
+  vmarea_t *vma;
+  list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+    if (newvma->vma_start < vma->vma_start) {
+      list_insert_before(&vma->vma_plink, &newvma->vma_plink);
+      goto end;
+    }
+  } list_iterate_end();
+end:
+  newvma->vma_vmmap = map;
 }
 
 /* Find a contiguous range of free virtual pages of length npages in
@@ -74,15 +97,31 @@ void vmmap_insert(vmmap_t *map, vmarea_t *newvma) {
  * should find a gap as high in the address space as possible; if dir
  * is VMMAP_DIR_LOHI, the gap should be as low as possible. */
 int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
+  dbg(DBG_VMMAP, "\n");
+  KASSERT(dir == VMMAP_DIR_LOHI || dir == VMMAP_DIR_HILO);
+  KASSERT(map);
+  KASSERT(npages);
   NOT_YET_IMPLEMENTED("VM: vmmap_find_range");
+  USER_MEM_HIGH;
+  USER_MEM_LOW;
+  vmarea_t *vma;
+  list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+    
+  } list_iterate_end();
   return -1;
 }
 
 /* Find the vm_area that vfn lies in. Simply scan the address space
  * looking for a vma whose range covers vfn. If the page is unmapped,
  * return NULL. */
+// CONVENTION: page number, not address
 vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
-  NOT_YET_IMPLEMENTED("VM: vmmap_lookup");
+  dbg(DBG_VMMAP, "\n");
+  vmarea_t *vma;
+  list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+    if (vma->vma_start <= vfn && vfn <= vma->vma_end)
+      return vma;
+  } list_iterate_end();
   return NULL;
 }
 
@@ -91,8 +130,15 @@ vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
  * to the new vmmap on success, NULL on failure. This function is
  * called when implementing fork(2). */
 vmmap_t *vmmap_clone(vmmap_t *map) {
+  dbg(DBG_VMMAP, "\n");
   NOT_YET_IMPLEMENTED("VM: vmmap_clone");
-  return NULL;
+  vmmap_t *new_map = slab_obj_alloc(vmmap_allocator);
+  KASSERT(new_map);
+  vmarea_t *vma;
+  list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+
+  } list_iterate_end();
+  return new_map;
 }
 
 /* Insert a mapping into the map starting at lopage for npages pages.
@@ -122,7 +168,24 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
  */
 int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
               int prot, int flags, off_t off, int dir, vmarea_t **new) {
+  dbg(DBG_VMMAP, "\n");
+  KASSERT(flags);
+  dbg(DBG_VFS, "\n");
   NOT_YET_IMPLEMENTED("VM: vmmap_map");
+  USER_MEM_LOW;
+  if (!lopage) {
+
+  } else {
+
+  }
+   if (!file) {
+
+   } else { 
+
+   }
+   if (new) {
+
+   }
   return -1;
 }
 
@@ -156,7 +219,13 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
  * list.
  */
 int vmmap_remove(vmmap_t *map, uint32_t lopage, uint32_t npages) {
+  dbg(DBG_VMMAP, "\n");
+  dbg(DBG_VMMAP, "lopage: %d npages: %d\n", lopage, npages);
   NOT_YET_IMPLEMENTED("VM: vmmap_remove");
+  vmarea_t *vma;
+  list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+
+  } list_iterate_end();
   return -1;
 }
 
@@ -165,8 +234,49 @@ int vmmap_remove(vmmap_t *map, uint32_t lopage, uint32_t npages) {
  * given range, 0 otherwise.
  */
 int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
-  NOT_YET_IMPLEMENTED("VM: vmmap_is_range_empty");
-  return 0;
+  dbg(DBG_VMMAP, "\n");
+  dbg(DBG_VMMAP, "startvfn: %d npages: %d\n", startvfn, npages);
+  uint32_t endvfn = startvfn + npages - 1;
+  vmarea_t *vma;
+  list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+    if ((vma->vma_start <= startvfn && startvfn <= vma->vma_end) || 
+        (vma->vma_start <= endvfn && endvfn <= vma->vma_end))
+      return 0;
+  } list_iterate_end();
+  return 1;
+}
+
+// Abstraction for reading and writing
+int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int write) {
+  dbg(DBG_VMMAP, "\n");
+  NOT_YET_IMPLEMENTED("VM: vmmap_iop");
+  pframe_t *pframe;
+  int ndone_total = 0;
+  while (count) {
+    uint32_t pagenum = ADDR_TO_PN(vaddr + ndone_total);
+    
+    vmarea_t *vma = vmmap_lookup(map, pagenum);
+    if (!vma) {
+      dbg(DBG_VMMAP, "vmmap_lookup error\n");
+      return ndone_total;
+    }
+    pframe_get(vma->vma_obj, num, &pframe);
+
+    size_t offset = PAGE_OFFSET(vaddr + ndone_total);
+    size_t ndone = MIN(count, PAGE_SIZE - offset);
+
+    // Do the operation on this page
+    if (write) {
+      pframe_dirty(pframe);
+      memcpy(pframe->pf_addr + offset, buf + ndone_total, ndone);
+    } else {
+      memcpy(buf + ndone_total, pframe->pf_addr + offset, ndone);
+    }
+    // Update counters
+    count -= ndone;
+    ndone_total += ndone;
+  }
+  return ndone_total;
 }
 
 /* Read into 'buf' from the virtual address space of 'map' starting at
@@ -178,8 +288,7 @@ int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
  * Returns 0 on success, -errno on error.
  */
 int vmmap_read(vmmap_t *map, const void *vaddr, void *buf, size_t count) {
-  NOT_YET_IMPLEMENTED("VM: vmmap_read");
-  return 0;
+  return vmmap_iop(map, (void *)vaddr, buf, count, 0);
 }
 
 /* Write from 'buf' into the virtual address space of 'map' starting at
@@ -191,8 +300,7 @@ int vmmap_read(vmmap_t *map, const void *vaddr, void *buf, size_t count) {
  * Returns 0 on success, -errno on error.
  */
 int vmmap_write(vmmap_t *map, void *vaddr, const void *buf, size_t count) {
-  NOT_YET_IMPLEMENTED("VM: vmmap_write");
-  return 0;
+  return vmmap_iop(map, vaddr, (void *)buf, count, 1);
 }
 
 /* a debugging routine: dumps the mappings of the given address space. */
