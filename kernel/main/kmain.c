@@ -176,11 +176,11 @@ static void *idleproc_run(int arg1, void *arg2) {
 /* You can't do this until you have VFS, check the include/drivers/dev.h
  * file for macros with the device ID's you will need to pass to mknod */
   do_mkdir("/dev");
-  //do_mknod("/dev/null", S_IFCHR, MKDEVID(1,0));
-  //do_mknod("/dev/zero", S_IFCHR, MKDEVID(1,1));
-  //do_mknod("/dev/tty0", S_IFCHR, MKDEVID(2,0));
-  //do_mknod("/dev/tty1", S_IFCHR, MKDEVID(2,1));
-  //do_mknod("/dev/sda", S_IFBLK, MKDEVID(1,0));
+  do_mknod("/dev/null", S_IFCHR, MKDEVID(1,0));
+  do_mknod("/dev/zero", S_IFCHR, MKDEVID(1,1));
+  do_mknod("/dev/tty0", S_IFCHR, MKDEVID(2,0));
+  do_mknod("/dev/tty1", S_IFCHR, MKDEVID(2,1));
+  do_mknod("/dev/sda", S_IFBLK, MKDEVID(1,0));
 #endif
 
   /* Finally, enable interrupts (we want to make sure interrupts
@@ -278,13 +278,13 @@ static void *initproc_run(int arg1, void *arg2) {
   kshell_add_command("drivers", &test_drivers, "test drivers");
   kshell_add_command("vfs", &test_vfs, "test vfs");
 
-  //int err = 0;
-  //kshell_t *ksh = kshell_create(0);
-  //KASSERT(ksh && "kshell_create failed");
+  int err = 0;
+  kshell_t *ksh = kshell_create(0);
+  KASSERT(ksh && "kshell_create failed");
 
-  //while ((err = kshell_execute_next(ksh)) > 0);
-  //KASSERT(!err && "kshell exited with error");
-  //kshell_destroy(ksh);
+  while ((err = kshell_execute_next(ksh)) > 0);
+  KASSERT(!err && "kshell exited with error");
+  kshell_destroy(ksh);
 
   return NULL;
 }

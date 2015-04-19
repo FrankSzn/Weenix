@@ -27,6 +27,12 @@ int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
     dbg(DBG_VFS, "not a directory\n");
     return -ENOTDIR;
   }
+  if (!len) { // Empty lookup is just the directory
+    dbg(DBG_VFS, "empty directory lookup!\n");
+    vref(dir);
+    *result = dir;
+    return 0;
+  }
   int status = dir->vn_ops->lookup(dir, name, len, result);
   return status;
 }
@@ -51,7 +57,7 @@ int lookup(vnode_t *dir, const char *name, size_t len, vnode_t **result) {
  */
 int dir_namev(const char *pathname, size_t *namelen, const char **name,
               vnode_t *base, vnode_t **res_vnode) {
-  dbg(DBG_VFS, "path: %s, %d\n", pathname, strlen(pathname));
+  dbg(DBG_VFS, "path: %s\n", pathname);
   if (!pathname)
     return -ENOENT;
   if (!strlen(pathname))

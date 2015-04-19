@@ -191,11 +191,13 @@ int do_mknod(const char *path, int mode, unsigned devid) {
   // Check if already exists
   vnode_t *new_vnode = NULL;
   status = lookup(dir, name, namelen, &new_vnode);
-  if (status !=-ENOENT) {
+  if (status && status !=-ENOENT) {
+    dbg(DBG_VFS, "lookup error: %d\n", status);
     vput(dir);
     return status;
   }
   if (new_vnode) {
+    dbg(DBG_VFS, "already exists!\n");
     vput(dir);
     vput(new_vnode);
     return -EEXIST;

@@ -29,7 +29,7 @@ GDBCOMM   := gdb-commands
 %.a:
 	touch $@
 
-all: $(SYMBOLS) $(BSYMBOLS) $(ISO_IMAGE) $(GDBCOMM)
+all: $(SYMBOLS) $(BSYMBOLS) $(ISO_IMAGE) $(GDBCOMM) cscope
 
 $(KERNEL): $(OBJS) $(PREBUILT)
 	@ echo "  Linking for \"kernel/$@\"..."

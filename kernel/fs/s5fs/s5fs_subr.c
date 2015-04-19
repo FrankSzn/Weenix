@@ -72,7 +72,8 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
   } else { // Indirect blocks
     indirect = 1;
     block_index -= S5_NDIRECT_BLOCKS;
-    KASSERT(block_index < S5_NIDIRECT_BLOCKS);
+    if (block_index >= S5_NIDIRECT_BLOCKS)
+      return -EFBIG;
     int status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
         block_index, &pframe);
     if (status) return status;
@@ -135,8 +136,6 @@ int s5_file_op(struct vnode *vnode, off_t seek, char *buf, size_t len, int write
     }
     size_t offset = S5_DATA_OFFSET(seek + ndone_total);
     size_t ndone = MIN(len, S5_BLOCK_SIZE - offset);
-
-    dbg(DBG_S5FS, "ndone: %d\n", ndone);
 
     // Do the operation on this page
     if (write) {
@@ -512,9 +511,12 @@ int s5_remove_dirent(vnode_t *vnode, const char *name, size_t namelen) {
       sizeof(s5_dirent_t));
   KASSERT(nwrite == sizeof(s5_dirent_t));
   // Decrease file size
-  KASSERT(VNODE_TO_S5INODE(vnode)->s5_size >= sizeof(s5_dirent_t));
-  VNODE_TO_S5INODE(vnode)->s5_size -= sizeof(s5_dirent_t);
-  s5_dirty_inode(VNODE_TO_S5FS(vnode), VNODE_TO_S5INODE(vnode));
+  s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
+  KASSERT(inode->s5_size >= sizeof(s5_dirent_t));
+  KASSERT(vnode->vn_len == inode->s5_size);
+  s5_dirty_inode(VNODE_TO_S5FS(vnode), inode);
+  inode->s5_size -= sizeof(s5_dirent_t);
+  vnode->vn_len -= sizeof(s5_dirent_t);
   return 0;
 }
 

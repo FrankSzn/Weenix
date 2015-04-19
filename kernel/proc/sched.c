@@ -198,13 +198,12 @@ void sched_switch(void) {
   // Disable interrupts
   kthread_t *old = curthr;
   int old_ipl = intr_getipl();
-  intr_setipl(IPL_HIGH);
+  intr_disable();
+  intr_setipl(IPL_LOW);
   // Wait for interrupt if empty
   while (!(curthr = ktqueue_dequeue(&kt_runq))) {
-    //intr_disable();
-    intr_setipl(IPL_LOW);
+    intr_disable();
     intr_wait();
-    intr_setipl(IPL_HIGH);
   }
   // Switch procs
   curproc = curthr->kt_proc;
@@ -212,6 +211,7 @@ void sched_switch(void) {
   KASSERT(curthr->kt_state == KT_RUN);
   context_switch(&old->kt_ctx, &curthr->kt_ctx);
   intr_setipl(old_ipl);
+  intr_enable();
 }
 
 /*

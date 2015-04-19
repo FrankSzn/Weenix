@@ -207,6 +207,7 @@ int s5fs_mount(struct fs *fs) {
  */
 static void s5fs_read_vnode(vnode_t *vnode) {
   dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
+  kmutex_lock(&vnode->vn_mutex);
   // Get page frame
   pframe_t *pframe;
   mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
@@ -248,6 +249,7 @@ static void s5fs_read_vnode(vnode_t *vnode) {
   else
     vnode->vn_len = inode->s5_size;
   dbg(DBG_S5FS, "read vno: %d linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
+  kmutex_unlock(&vnode->vn_mutex);
 }
 
 /*
@@ -260,6 +262,7 @@ static void s5fs_read_vnode(vnode_t *vnode) {
  */
 static void s5fs_delete_vnode(vnode_t *vnode) {
   dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
+  kmutex_lock(&vnode->vn_mutex);
   // Get page frame
   pframe_t *pframe;
   mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
@@ -275,6 +278,7 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
   if (!inode->s5_linkcount)
     s5_free_inode(vnode);
   dbg(DBG_S5FS, "vno: %d, linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
+  kmutex_unlock(&vnode->vn_mutex);
 }
 
 /*
@@ -286,9 +290,11 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
  */
 static int s5fs_query_vnode(vnode_t *vnode) {
   dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
+  kmutex_lock(&vnode->vn_mutex);
   // Get inode
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(inode->s5_linkcount >= 0);
+  kmutex_unlock(&vnode->vn_mutex);
   return inode->s5_linkcount > 0;
 }
 
@@ -303,16 +309,16 @@ static int s5fs_umount(fs_t *fs) {
   pframe_t *sbp;
   int ret;
 
-  //if (s5fs_check_refcounts(fs)) {
-  //  dbg(DBG_PRINT, "s5fs_umount: WARNING: linkcount corruption "
-  //                 "discovered in fs on block device with major %d "
-  //                 "and minor %d!!\n",
-  //      MAJOR(bd->bd_id), MINOR(bd->bd_id));
-  //  panic("s5fs_umount: WARNING: linkcount corruption "
-  //        "discovered in fs on block device with major %d "
-  //        "and minor %d!!\n",
-  //        MAJOR(bd->bd_id), MINOR(bd->bd_id));
-  //}
+  if (s5fs_check_refcounts(fs)) {
+    dbg(DBG_PRINT, "s5fs_umount: WARNING: linkcount corruption "
+                   "discovered in fs on block device with major %d "
+                   "and minor %d!!\n",
+        MAJOR(bd->bd_id), MINOR(bd->bd_id));
+    panic("s5fs_umount: WARNING: linkcount corruption "
+          "discovered in fs on block device with major %d "
+          "and minor %d!!\n",
+          MAJOR(bd->bd_id), MINOR(bd->bd_id));
+  }
   if (s5_check_super(s5->s5f_super)) {
     dbg(DBG_PRINT, "s5fs_umount: WARNING: corrupted superblock "
                    "discovered on fs on block device with major %d "
@@ -478,7 +484,7 @@ static int s5fs_mknod(vnode_t *dir, const char *name, size_t namelen, int mode,
  */
 int s5fs_lookup(vnode_t *base, const char *name, size_t namelen,
                 vnode_t **result) {
-  dbg(DBG_S5FS, "\n");
+  dbg(DBG_S5FS, "%.*s\n", namelen, name);
   if (namelen > S5_NAME_LEN)
     return -ENAMETOOLONG;
   kmutex_lock(&base->vn_mutex);
@@ -489,6 +495,7 @@ int s5fs_lookup(vnode_t *base, const char *name, size_t namelen,
   }
   vnode_t *vnode = vget(base->vn_fs, ino);
   if (result) *result = vnode;
+  else vput(vnode);
   kmutex_unlock(&base->vn_mutex);
   return 0;
 }
@@ -618,32 +625,29 @@ static int s5fs_rmdir(vnode_t *parent, const char *name, size_t namelen) {
   }
   vnode_t *vn = vget(parent->vn_fs, ino);
   // Must be a directory
-  if (!S_ISDIR(parent->vn_mode)) {
+  if (!S_ISDIR(vn->vn_mode)) {
     vput(vn);
     kmutex_unlock(&parent->vn_mutex);
     return -ENOTDIR;
   }
   // Must be empty
-  dirent_t entry;
-  for (int offset = s5fs_readdir(vn, 0, &entry); offset; 
-      s5fs_readdir(vn, offset, &entry)) {
-    if (!strcmp(entry.d_name, ".") || !strcmp(entry.d_name, ".."))
-      continue;
-    if (entry.d_name[0]) {
-      vput(vn);
-      kmutex_unlock(&parent->vn_mutex);
-      return -ENOTEMPTY;
-    }
+  if (vn->vn_len != 2 * sizeof(s5_dirent_t)) {
+    vput(vn);
+    kmutex_unlock(&parent->vn_mutex);
+    return -ENOTEMPTY;
   }
-  
   // Remove .. link to parent
+  kmutex_lock(&vn->vn_mutex);
   int status = s5_remove_dirent(vn, "..", 2);
+  kmutex_unlock(&vn->vn_mutex);
   if (status) {
+    vput(vn);
     kmutex_unlock(&parent->vn_mutex);
     return status;
   }
   // Remove dir from parent directory
   status = s5_remove_dirent(parent, name, namelen);
+  vput(vn);
   kmutex_unlock(&parent->vn_mutex);
   return status;
 }
@@ -667,7 +671,7 @@ static int s5fs_readdir(vnode_t *vnode, off_t offset, struct dirent *d) {
   d->d_off = 0;
   d->d_ino = dirent.s5d_inode;
   strcpy((char *) &d->d_name, (const char *) &dirent.s5d_name);
-  dbg(DBG_S5FS, "%s ino: %d\n", d->d_name, d->d_ino);
+  dbg(DBG_S5FS, "%s ino: %d offset: %d\n", d->d_name, d->d_ino, offset);
   return nread;
 }
 
@@ -681,10 +685,9 @@ static int s5fs_readdir(vnode_t *vnode, off_t offset, struct dirent *d) {
  * You probably want to use s5_inode_blocks().
  */
 static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
-  dbg(DBG_S5FS, "\n");
+  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(ss);
-  KASSERT(ss->st_mode != S5_TYPE_FREE);
   kmutex_lock(&vnode->vn_mutex);
   ss->st_mode = vnode->vn_mode;
   ss->st_ino = vnode->vn_mode;
