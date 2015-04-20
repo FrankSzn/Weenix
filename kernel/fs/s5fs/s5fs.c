@@ -690,7 +690,7 @@ static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
   KASSERT(ss);
   kmutex_lock(&vnode->vn_mutex);
   ss->st_mode = vnode->vn_mode;
-  ss->st_ino = vnode->vn_mode;
+  ss->st_ino = vnode->vn_vno;
   ss->st_nlink = inode->s5_linkcount;
   ss->st_size = inode->s5_size;
   ss->st_blksize = S5_BLOCK_SIZE;

@@ -75,7 +75,7 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
     if (block_index >= S5_NIDIRECT_BLOCKS)
       return -EFBIG;
     int status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
-        block_index, &pframe);
+        inode->s5_indirect_block, &pframe);
     if (status) return status;
     blocknum = ((uint32_t *)pframe->pf_addr)[block_index];
   }
@@ -117,11 +117,6 @@ int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int
   KASSERT(seek >= 0);
   KASSERT(inode);
   KASSERT(curthr == vnode->vn_mutex.km_holder);
-  // Check for reading after file end
-  if (!write && seek >= inode->s5_size) {
-    dbg(DBG_S5FS, "read past end of file\n");
-    return 0;
-  }
   //dbg(DBG_S5FS, "vno: %d, seek: %d len: %d filelen: %d\n", vnode->vn_vno, 
   //    seek, len, inode->s5_size);
   pframe_t *pframe;
@@ -129,12 +124,21 @@ int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int
   while (len) {
     blocknum_t blocknum = S5_DATA_BLOCK(seek + ndone_total);
     int status = pframe_get(&vnode->vn_mmobj, blocknum, &pframe);
+    
     if (status) {
       dbg(DBG_S5FS, "pframe_get error: %d\n", status);
       return ndone_total;
     }
     size_t offset = S5_DATA_OFFSET(seek + ndone_total);
     size_t ndone = MIN(len, S5_BLOCK_SIZE - offset);
+    // Can't read past end of file
+    if (!write)
+      ndone = MIN(ndone, inode->s5_size - seek - ndone_total);
+    // Check for reading after file end
+    if (!write && seek + ndone_total >= inode->s5_size) {
+      dbg(DBG_S5FS, "read past end of file\n");
+      return ndone_total;
+    }
 
     // Do the operation on this page
     if (write) {
@@ -156,6 +160,7 @@ int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int
     vnode->vn_len = new_size;
     s5_dirty_inode(VNODE_TO_S5FS(vnode), inode);
   }
+  dbg(DBG_S5FS, "did %d bytes\n", ndone_total);
   return ndone_total;
 }
 
