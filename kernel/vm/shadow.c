@@ -48,7 +48,10 @@ static mmobj_ops_t shadow_mmobj_ops = {.ref = shadow_ref,
  * shadow page sub system. Currently it only initializes the
  * shadow_allocator object.
  */
-void shadow_init() { NOT_YET_IMPLEMENTED("VM: shadow_init"); }
+void shadow_init() { 
+  shadow_allocator = slab_allocator_create("shadow", sizeof(mmobj_t));
+  KASSERT(NULL != shadow_allocator && "failed to create shadow allocator!");
+}
 
 /*
  * You'll want to use the shadow_allocator to allocate the mmobj to

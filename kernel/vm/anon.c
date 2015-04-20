@@ -35,7 +35,9 @@ static mmobj_ops_t anon_mmobj_ops = {.ref = anon_ref,
  * anonymous page sub system. Currently it only initializes the
  * anon_allocator object.
  */
-void anon_init() { NOT_YET_IMPLEMENTED("VM: anon_init"); }
+void anon_init() { 
+  NOT_YET_IMPLEMENTED("VM: anon_init");
+}
 
 /*
  * You'll want to use the anon_allocator to allocate the mmobj to
@@ -53,7 +55,9 @@ mmobj_t *anon_create() {
 /*
  * Increment the reference count on the object.
  */
-static void anon_ref(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: anon_ref"); }
+static void anon_ref(mmobj_t *o) { 
+  NOT_YET_IMPLEMENTED("VM: anon_ref");
+}
 
 /*
  * Decrement the reference count on the object. If, however, the
@@ -63,7 +67,9 @@ static void anon_ref(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: anon_ref"); }
  * never be used again. You should unpin and uncache all of the
  * object's pages and then free the object itself.
  */
-static void anon_put(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: anon_put"); }
+static void anon_put(mmobj_t *o) { 
+  NOT_YET_IMPLEMENTED("VM: anon_put");
+}
 
 /* Get the corresponding page from the mmobj. No special handling is
  * required. */

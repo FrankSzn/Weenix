@@ -101,13 +101,26 @@ int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
   KASSERT(dir == VMMAP_DIR_LOHI || dir == VMMAP_DIR_HILO);
   KASSERT(map);
   KASSERT(npages);
-  NOT_YET_IMPLEMENTED("VM: vmmap_find_range");
-  USER_MEM_HIGH;
-  USER_MEM_LOW;
   vmarea_t *vma;
-  list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-    
-  } list_iterate_end();
+  // Walk the list, checking if there is enough space between regions
+  if (dir == VMMAP_DIR_LOHI) { // Low as possible
+    size_t low = USER_MEM_LOW;
+    list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+      size_t high = vma->vma_start; 
+      if ((high - low) >= npages)
+        return low;
+      low = vma->vma_end;
+    } list_iterate_end();
+  } else { // High as possible
+    size_t high = USER_MEM_HIGH;
+    list_iterate_reverse(&map->vmm_list, vma, vmarea_t, vma_plink) {
+      size_t low = vma->vma_end; 
+      if ((high - low) >= npages)
+        return high - npages;
+      high = vma->vma_start;
+    } list_iterate_end();
+  }
+  dbg(DBG_VMMAP, "no region large enough!\n");
   return -1;
 }
 
@@ -169,24 +182,58 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
 int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
               int prot, int flags, off_t off, int dir, vmarea_t **new) {
   dbg(DBG_VMMAP, "\n");
-  KASSERT(flags);
-  dbg(DBG_VFS, "\n");
-  NOT_YET_IMPLEMENTED("VM: vmmap_map");
-  USER_MEM_LOW;
-  if (!lopage) {
-
-  } else {
-
+  // Validate input
+  KASSERT(flags == MAP_PRIVATE || flags == MAP_SHARED);
+  KASSERT(PAGE_ALIGNED(off));
+  KASSERT(npages);
+  KASSERT((prot == PROT_NONE) ||
+      prot == (PROT_READ | PROT_EXEC)||
+      prot == (PROT_READ | PROT_WRITE) ||
+      prot == (PROT_WRITE | PROT_EXEC) ||
+      prot == (PROT_READ | PROT_EXEC | PROT_WRITE));
+  vmarea_t *new_area;
+  if (!lopage) { // Find a region big enough
+    int status = vmmap_find_range(map, npages, dir);
+    if (status < 0)
+      return -ENOMEM; 
+    lopage = status;
+    KASSERT(vmmap_lookup(map, lopage) == NULL);
+  } else { // Unlap overlapping area if one exists
+    vmarea_t *existing;
+    if ((existing = vmmap_lookup(map, lopage)))
+      vmmap_remove(map, lopage, npages);
+    KASSERT(vmmap_lookup(map, lopage) == NULL);
   }
-   if (!file) {
+  // Initialize new vmarea
+  new_area = vmarea_alloc();
+  KASSERT(new_area);
+  new_area->vma_prot = prot;
+  list_init(&new_area->vma_plink);
+  list_init(&new_area->vma_olink);
+  new_area->vma_start = lopage;
+  new_area->vma_end = lopage + npages - 1;
+  new_area->vma_off = off;
+  new_area->vma_flags = flags;
 
-   } else { 
+  // Call mmap
+  // TODO: refcounts here
+  if (flags & MAP_PRIVATE) {
+    new_area->vma_obj = shadow_create();
+  } else { 
+    if (!file) {
+      new_area->vma_obj = anon_create();
+    } else {
+      file->vn_ops->mmap(file, new_area, &new_area->vma_obj);
+    }
+  }
+  KASSERT(new_area->vma_obj);
 
-   }
-   if (new) {
+  vmmap_insert(map, new_area);
 
-   }
-  return -1;
+  if (new) {
+    *new = new_area;
+  }
+  return 0;
 }
 
 /*
@@ -218,15 +265,38 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
  * The region completely contains the vmarea. Remove the vmarea from the
  * list.
  */
-int vmmap_remove(vmmap_t *map, uint32_t lopage, uint32_t npages) {
-  dbg(DBG_VMMAP, "\n");
+int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
   dbg(DBG_VMMAP, "lopage: %d npages: %d\n", lopage, npages);
-  NOT_YET_IMPLEMENTED("VM: vmmap_remove");
+  KASSERT(npages);
   vmarea_t *vma;
+  uint32_t highpage = lopage + npages - 1;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-
+    if (vma->vma_start <= lopage) {
+      if (highpage <= vma->vma_end) { // Case 1
+        // Split area
+        vmarea_t *new_vma = vmarea_alloc();
+        KASSERT(new_vma);
+        memcpy(new_vma, vma, sizeof(vmarea_t));
+        new_vma->vma_obj->mmo_ops->ref(new_vma->vma_obj);
+        vma->vma_end = lopage - 1;
+        new_vma->vma_start = highpage + 1;
+        vmmap_insert(map, new_vma);
+        KASSERT(vma->vma_end - vma->vma_start);
+        KASSERT(new_vma->vma_end - new_vma->vma_start);
+      } else { // Case 2
+        vma->vma_end = lopage - 1;
+      }
+    } else if (highpage <= vma->vma_end) { // Case 3
+      vma->vma_off -= highpage + 1 - vma->vma_start;
+      vma->vma_start = highpage + 1;
+    } else if (lopage <= vma->vma_start && vma->vma_end <= highpage) { // Case 4
+      list_remove(&vma->vma_olink);
+      // TODO: destroy vmarea
+    }
   } list_iterate_end();
-  return -1;
+  KASSERT(!vmmap_lookup(map, lopage));
+  KASSERT(!vmmap_lookup(map, lopage + npages - 1));
+  return 0;
 }
 
 /*
@@ -260,7 +330,7 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
       dbg(DBG_VMMAP, "vmmap_lookup error\n");
       return ndone_total;
     }
-    pframe_get(vma->vma_obj, num, &pframe);
+    //pframe_get(vma->vma_obj, num, &pframe);
 
     size_t offset = PAGE_OFFSET(vaddr + ndone_total);
     size_t ndone = MIN(count, PAGE_SIZE - offset);
