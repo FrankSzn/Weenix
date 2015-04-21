@@ -446,8 +446,7 @@ static int special_file_write(vnode_t *file, off_t offset, const void *buf,
  * Do not worry about this until VM.
  */
 static int special_file_mmap(vnode_t *file, vmarea_t *vma, mmobj_t **ret) {
-  NOT_YET_IMPLEMENTED("VM: special_file_mmap");
-  return 0;
+  return file->vn_cdev->cd_ops->mmap(file, vma, ret);
 }
 
 /* Stat is currently the only filesystem specific routine that we have to worry
@@ -467,8 +466,7 @@ static int special_file_stat(vnode_t *vnode, struct stat *ss) {
  * Do not worry about this until VM.
  */
 static int special_file_fillpage(vnode_t *file, off_t offset, void *pagebuf) {
-  NOT_YET_IMPLEMENTED("VM: special_file_fillpage");
-  return 0;
+  return file->vn_cdev->cd_ops->fillpage(file, offset, pagebuf);
 }
 
 /* Just as with mmap above, pass the call through to the
@@ -477,8 +475,7 @@ static int special_file_fillpage(vnode_t *file, off_t offset, void *pagebuf) {
  * Do not worry about this until VM.
  */
 static int special_file_dirtypage(vnode_t *file, off_t offset) {
-  NOT_YET_IMPLEMENTED("VM: special_file_dirtypage");
-  return 0;
+  return file->vn_cdev->cd_ops->dirtypage(file, offset);
 }
 
 /* Just as with mmap above, pass the call through to the
@@ -487,8 +484,7 @@ static int special_file_dirtypage(vnode_t *file, off_t offset) {
  * Do not worry about this until VM.
  */
 static int special_file_cleanpage(vnode_t *file, off_t offset, void *pagebuf) {
-  NOT_YET_IMPLEMENTED("VM: special_file_cleanpage");
-  return 0;
+  return file->vn_cdev->cd_ops->cleanpage(file, offset, pagebuf);
 }
 
 /*

@@ -119,8 +119,13 @@ fail:
  * vaddr?")
  */
 int addr_perm(struct proc *p, const void *vaddr, int perm) {
-  NOT_YET_IMPLEMENTED("VM: ***none***");
-  return 0;
+  vmarea_t *vma = vmmap_lookup(p->p_vmmap, ADDR_TO_PN(vaddr));
+  if (!vma) return 0;
+  if (((perm & PROT_READ) && !(vma->vma_prot & PROT_READ)) ||
+      ((perm & PROT_WRITE) && !(vma->vma_prot & PROT_WRITE)) ||
+      ((perm & PROT_EXEC) && !(vma->vma_prot & PROT_EXEC)))
+    return 0;
+  return 1;
 }
 
 /*
@@ -133,6 +138,9 @@ int addr_perm(struct proc *p, const void *vaddr, int perm) {
  * the given permissions, and 0 otherwise.
  */
 int range_perm(struct proc *p, const void *avaddr, size_t len, int perm) {
-  NOT_YET_IMPLEMENTED("VM: ***none***");
-  return 0;
+  for (size_t addr = (size_t)avaddr; addr < (size_t)avaddr + len; addr += PAGE_SIZE) {
+    if (!addr_perm(p, (void *)addr, perm))
+      return 0;
+  }
+  return 1;
 }

@@ -64,7 +64,7 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
   vmarea_t *new_area;
   int status = vmmap_map(curproc->p_vmmap, file ? file->f_vnode : NULL, 
       ADDR_TO_PN(addr), len / PAGE_SIZE, prot, 
-      flags, off, VMMAP_DIR_LOHI, &new_area);
+      flags, off, VMMAP_DIR_HILO, &new_area);
   if (new_area)
     tlb_flush_range(new_area->vma_start, len / PAGE_SIZE);
   if (!status) *ret = (void *)new_area->vma_start;

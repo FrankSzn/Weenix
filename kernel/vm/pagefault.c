@@ -49,6 +49,18 @@
  *              can be found in pagefault.h
  */
 void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
-  curproc->p_vmmap;
-  NOT_YET_IMPLEMENTED("VM: handle_pagefault");
+  uint32_t pn = ADDR_TO_PN(vaddr);
+  vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, pn);
+  if (!vma)
+    proc_kill(curproc, EFAULT);
+  if (((cause & FAULT_WRITE) && !(PROT_WRITE & vma->vma_prot)) ||
+      ((cause & FAULT_EXEC) && !(PROT_EXEC & vma->vma_prot)))
+    proc_kill(curproc, EFAULT);
+  pframe_t *pf;
+  int status = pframe_get(vma->vma_obj, pn, &pf);
+  KASSERT(!status);
+  // TODO: check flags
+  int flags = PD_PRESENT | PD_USER;
+  if (PROT_WRITE & vma->vma_prot) flags |= PD_WRITE;
+  pt_map(curproc->p_pagedir, pn << PAGE_SHIFT, (uintptr_t)pf->pf_addr, flags, 0);
 }

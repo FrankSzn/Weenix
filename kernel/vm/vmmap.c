@@ -317,19 +317,19 @@ int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
 
 // Abstraction for reading and writing
 int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int write) {
-  dbg(DBG_VMMAP, "\n");
-  NOT_YET_IMPLEMENTED("VM: vmmap_iop");
-  pframe_t *pframe;
+  dbg(DBG_VMMAP, "vaddr: %p count: %d\n", vaddr, count);
   int ndone_total = 0;
   while (count) {
+    // Find the page
     uint32_t pagenum = ADDR_TO_PN(vaddr + ndone_total);
-    
     vmarea_t *vma = vmmap_lookup(map, pagenum);
     if (!vma) {
-      dbg(DBG_VMMAP, "vmmap_lookup error\n");
+      dbg(DBG_VMMAP, "page not found\n");
       return ndone_total;
     }
-    pframe_get(vma->vma_obj, pagenum + vma->vma_off, &pframe);
+    pframe_t *pframe;
+    pframe_get(vma->vma_obj, pagenum - vma->vma_start + vma->vma_off, &pframe);
+    KASSERT(pframe && pframe->pf_addr);
 
     size_t offset = PAGE_OFFSET(vaddr + ndone_total);
     size_t ndone = MIN(count, PAGE_SIZE - offset);

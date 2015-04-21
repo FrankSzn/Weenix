@@ -87,9 +87,7 @@ static int null_write(bytedev_t *dev, int offset, const void *buf, int count) {
  * number of bytes
  */
 static int zero_read(bytedev_t *dev, int offset, void *buf, int count) {
-  char *buff = buf;
-  for (int i = 0; i < count; ++i)
-    buff[offset+i] = 0; 
+  memset((char *)buf + offset, 0, count);
   return count;
 }
 
@@ -97,6 +95,6 @@ static int zero_read(bytedev_t *dev, int offset, void *buf, int count) {
  */
 
 static int zero_mmap(vnode_t *file, vmarea_t *vma, mmobj_t **ret) {
-  NOT_YET_IMPLEMENTED("VM: zero_mmap");
-  return -1;
+  *ret = anon_create();
+  return 0;
 }
