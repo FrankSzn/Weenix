@@ -15,6 +15,7 @@
 #include "fs/vnode.h"
 #include "fs/vfs.h"
 #include "fs/file.h"
+#include "fs/stat.h"
 
 #include "vm/vmmap.h"
 #include "vm/mmap.h"
@@ -32,8 +33,42 @@
  */
 int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
             void **ret) {
-  NOT_YET_IMPLEMENTED("VM: do_mmap");
-  return -1;
+  if (!PAGE_ALIGNED(addr) || !PAGE_ALIGNED(len) || !PAGE_ALIGNED(off) || !len)
+      return -EINVAL;
+  if (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)
+    return -EINVAL;
+  if (((flags & MAP_PRIVATE) && (flags & MAP_SHARED)) || 
+      (!(flags & MAP_PRIVATE) && !(flags & MAP_SHARED)))
+    return -EINVAL;
+  // Set up file
+  file_t *file;
+  if (flags & MAP_ANON) {
+    file = NULL;
+  } else {
+    file = fget(fd);
+    if (!file)
+      return -EBADF;
+    if (!S_ISREG(file->f_vnode->vn_mode)) {
+      fput(file);
+      return -EACCES;
+    }
+    if (!(file->f_mode & FMODE_READ) ||
+        ((flags & MAP_SHARED) && (prot & PROT_WRITE) && 
+         !(file->f_mode & FMODE_WRITE)) ||
+        ((prot & PROT_WRITE) && (file->f_mode == FMODE_APPEND))) {
+      fput(file);
+      return -EACCES;
+    }
+  }
+
+  vmarea_t *new_area;
+  int status = vmmap_map(curproc->p_vmmap, file ? file->f_vnode : NULL, 
+      ADDR_TO_PN(addr), len / PAGE_SIZE, prot, 
+      flags, off, VMMAP_DIR_LOHI, &new_area);
+  if (new_area)
+    tlb_flush_range(new_area->vma_start, len / PAGE_SIZE);
+  if (!status) *ret = (void *)new_area->vma_start;
+  return status;
 }
 
 /*
@@ -44,6 +79,11 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
  * Remember to clear the TLB.
  */
 int do_munmap(void *addr, size_t len) {
-  NOT_YET_IMPLEMENTED("VM: do_munmap");
-  return -1;
+  if (!PAGE_ALIGNED(addr) || !PAGE_ALIGNED(len) || !len)
+      return -EINVAL;
+  if (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)
+    return -EINVAL;
+  int status = vmmap_remove(curproc->p_vmmap, (uint32_t)addr, len / PAGE_SIZE);
+  tlb_flush_range((uint32_t)addr, len / PAGE_SIZE);
+  return status;
 }

@@ -97,7 +97,7 @@ end:
  * should find a gap as high in the address space as possible; if dir
  * is VMMAP_DIR_LOHI, the gap should be as low as possible. */
 int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
-  dbg(DBG_VMMAP, "\n");
+  dbg(DBG_VMMAP, "npages: %d\n", npages);
   KASSERT(dir == VMMAP_DIR_LOHI || dir == VMMAP_DIR_HILO);
   KASSERT(map);
   KASSERT(npages);
@@ -114,7 +114,7 @@ int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
   } else { // High as possible
     size_t high = USER_MEM_HIGH;
     list_iterate_reverse(&map->vmm_list, vma, vmarea_t, vma_plink) {
-      size_t low = vma->vma_end; 
+      size_t low = vma->vma_end;
       if ((high - low) >= npages)
         return high - npages;
       high = vma->vma_start;
@@ -132,7 +132,7 @@ vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
   dbg(DBG_VMMAP, "\n");
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-    if (vma->vma_start <= vfn && vfn <= vma->vma_end)
+    if (vma->vma_start <= vfn && vfn < vma->vma_end)
       return vma;
   } list_iterate_end();
   return NULL;
@@ -211,7 +211,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   list_init(&new_area->vma_plink);
   list_init(&new_area->vma_olink);
   new_area->vma_start = lopage;
-  new_area->vma_end = lopage + npages - 1;
+  new_area->vma_end = lopage + npages;
   new_area->vma_off = off;
   new_area->vma_flags = flags;
 
@@ -269,7 +269,7 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
   dbg(DBG_VMMAP, "lopage: %d npages: %d\n", lopage, npages);
   KASSERT(npages);
   vmarea_t *vma;
-  uint32_t highpage = lopage + npages - 1;
+  uint32_t highpage = lopage + npages;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (vma->vma_start <= lopage) {
       if (highpage <= vma->vma_end) { // Case 1
@@ -278,17 +278,17 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
         KASSERT(new_vma);
         memcpy(new_vma, vma, sizeof(vmarea_t));
         new_vma->vma_obj->mmo_ops->ref(new_vma->vma_obj);
-        vma->vma_end = lopage - 1;
-        new_vma->vma_start = highpage + 1;
+        vma->vma_end = lopage;
+        new_vma->vma_start = highpage;
         vmmap_insert(map, new_vma);
         KASSERT(vma->vma_end - vma->vma_start);
         KASSERT(new_vma->vma_end - new_vma->vma_start);
       } else { // Case 2
-        vma->vma_end = lopage - 1;
+        vma->vma_end = lopage;
       }
     } else if (highpage <= vma->vma_end) { // Case 3
-      vma->vma_off -= highpage + 1 - vma->vma_start;
-      vma->vma_start = highpage + 1;
+      vma->vma_off -= highpage - vma->vma_start;
+      vma->vma_start = highpage;
     } else if (lopage <= vma->vma_start && vma->vma_end <= highpage) { // Case 4
       list_remove(&vma->vma_olink);
       // TODO: destroy vmarea
@@ -304,13 +304,12 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
  * given range, 0 otherwise.
  */
 int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
-  dbg(DBG_VMMAP, "\n");
   dbg(DBG_VMMAP, "startvfn: %d npages: %d\n", startvfn, npages);
-  uint32_t endvfn = startvfn + npages - 1;
+  uint32_t endvfn = startvfn + npages;
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-    if ((vma->vma_start <= startvfn && startvfn <= vma->vma_end) || 
-        (vma->vma_start <= endvfn && endvfn <= vma->vma_end))
+    if ((startvfn <= vma->vma_start && vma->vma_start < endvfn) || 
+        (startvfn < vma->vma_end && vma->vma_end <= endvfn))
       return 0;
   } list_iterate_end();
   return 1;
@@ -330,7 +329,7 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
       dbg(DBG_VMMAP, "vmmap_lookup error\n");
       return ndone_total;
     }
-    //pframe_get(vma->vma_obj, num, &pframe);
+    pframe_get(vma->vma_obj, pagenum + vma->vma_off, &pframe);
 
     size_t offset = PAGE_OFFSET(vaddr + ndone_total);
     size_t ndone = MIN(count, PAGE_SIZE - offset);
