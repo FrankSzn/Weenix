@@ -60,8 +60,12 @@ void shadow_init() {
  * reference count is correct.
  */
 mmobj_t *shadow_create() {
-  NOT_YET_IMPLEMENTED("VM: shadow_create");
-  return NULL;
+  mmobj_t *o = slab_obj_alloc(shadow_allocator);
+  if (o) {
+    mmobj_init(o, &shadow_mmobj_ops);
+    ++o->mmo_refcount;
+  }
+  return o;
 }
 
 /* Implementation of mmobj entry points: */
@@ -69,7 +73,7 @@ mmobj_t *shadow_create() {
 /*
  * Increment the reference count on the object.
  */
-static void shadow_ref(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: shadow_ref"); }
+static void shadow_ref(mmobj_t *o) { ++o->mmo_refcount; }
 
 /*
  * Decrement the reference count on the object. If, however, the
@@ -79,7 +83,17 @@ static void shadow_ref(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: shadow_ref"); }
  * be used again. You should unpin and uncache all of the object's
  * pages and then free the object itself.
  */
-static void shadow_put(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: shadow_put"); }
+static void shadow_put(mmobj_t *o) { 
+  if (--o->mmo_refcount == 0) {
+    pframe_t *pf;
+    list_iterate_begin(&o->mmo_respages, pf, pframe_t, pf_olink) {
+      pframe_unpin(pf);
+      pframe_free(pf);
+    } list_iterate_end();
+  }
+  KASSERT(0 == o->mmo_nrespages);
+  slab_obj_free(shadow_allocator, o);
+}
 
 /* This function looks up the given page in this shadow object. The
  * forwrite argument is true if the page is being looked up for
@@ -92,8 +106,22 @@ static void shadow_put(mmobj_t *o) { NOT_YET_IMPLEMENTED("VM: shadow_put"); }
  * can overflow the kernel stack when looking down a long shadow chain */
 static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
                              pframe_t **pf) {
-  NOT_YET_IMPLEMENTED("VM: shadow_lookuppage");
-  return 0;
+  if (forwrite) { // Copy-on-write
+    // TODO
+  } else { // First shadow object with given page resident
+    while (o) {
+      *pf = pframe_get_resident(o, pagenum);
+      if (*pf) { // Already resident
+        while (pframe_is_busy(*pf)) {// Wait until not busy
+          sched_cancellable_sleep_on(&(*pf)->pf_waitq);
+          *pf = pframe_get_resident(o, pagenum);
+        }
+        return 0;
+      }
+        o = o->mmo_shadowed;
+      }
+    }
+  return -1;
 }
 
 /* As per the specification in mmobj.h, fill the page frame starting

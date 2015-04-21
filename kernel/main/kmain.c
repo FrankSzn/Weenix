@@ -274,6 +274,10 @@ void *calc_fib(int arg1, void *arg2) {
 static void *initproc_run(int arg1, void *arg2) {
   dbg(DBG_INIT, "init running\n");
 
+  char *newargv[] = { NULL, "hello", "world", NULL };
+  char *newenviron[] = { NULL };
+  kernel_execve("/usr/bin/hello", newargv, newenviron);
+
   kshell_add_command("procs", &test_procs, "test procs");
   kshell_add_command("drivers", &test_drivers, "test drivers");
   kshell_add_command("vfs", &test_vfs, "test vfs");

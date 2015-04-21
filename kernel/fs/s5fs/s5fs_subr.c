@@ -555,7 +555,10 @@ int s5_link(vnode_t *parent, vnode_t *child, const char *name, size_t namelen) {
   dirent.s5d_inode = child->vn_vno; // Copy inode number
   int nwrite = s5_write_file(parent, fpos, (char *)&dirent, 
       sizeof(s5_dirent_t));
-  KASSERT(nwrite == sizeof(s5_dirent_t));
+  if (nwrite != sizeof(s5_dirent_t)) {
+    dbg(DBG_S5FS, "too many links!\n");
+    return -EMLINK;
+  }
   // Increment refcount
   if (parent != child) { // Increment if not a self link
     s5_dirty_inode(VNODE_TO_S5FS(child), VNODE_TO_S5INODE(child));

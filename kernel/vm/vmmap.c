@@ -129,7 +129,7 @@ int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
  * return NULL. */
 // CONVENTION: page number, not address
 vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
-  dbg(DBG_VMMAP, "\n");
+  dbg(DBG_VMMAP, "vfn: %d\n", vfn);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (vma->vma_start <= vfn && vfn < vma->vma_end)
@@ -181,9 +181,9 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
  */
 int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
               int prot, int flags, off_t off, int dir, vmarea_t **new) {
-  dbg(DBG_VMMAP, "\n");
+  dbg(DBG_VMMAP, "npages: %d\n", npages);
   // Validate input
-  KASSERT(flags == MAP_PRIVATE || flags == MAP_SHARED);
+  KASSERT(flags & MAP_PRIVATE || flags & MAP_SHARED);
   KASSERT(PAGE_ALIGNED(off));
   KASSERT(npages);
   KASSERT((prot == PROT_NONE) ||

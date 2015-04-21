@@ -178,7 +178,7 @@ void proc_cleanup(int status) {
   }
   if (curproc->p_cwd) vput(curproc->p_cwd);
 
-  // TODO: clean up VM mappings
+  vmmap_destroy(curproc->p_vmmap);
 }
 
 /*
@@ -209,7 +209,7 @@ void proc_kill(proc_t *p, int status) {
  * In Weenix, this is only called by sys_halt.
  */
 void proc_kill_all() {
-  // TODO: fix this function
+  // TODO: fix this function and update for VM
   list_link_t *link;
   list_t *idle_children = &proc_lookup(PID_IDLE)->p_children;
   for (link = _proc_list.l_next; link != &_proc_list; link = link->l_next) {

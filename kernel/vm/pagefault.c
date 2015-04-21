@@ -59,8 +59,9 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   pframe_t *pf;
   int status = pframe_get(vma->vma_obj, pn, &pf);
   KASSERT(!status);
-  // TODO: check flags
+  // TODO: check flags, handle copy on write
   int flags = PD_PRESENT | PD_USER;
   if (PROT_WRITE & vma->vma_prot) flags |= PD_WRITE;
+  if (cause & FAULT_WRITE) pframe_dirty(pf);
   pt_map(curproc->p_pagedir, pn << PAGE_SHIFT, (uintptr_t)pf->pf_addr, flags, 0);
 }

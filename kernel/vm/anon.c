@@ -49,9 +49,8 @@ void anon_init() {
 mmobj_t *anon_create() {
   mmobj_t *anon = (mmobj_t *)slab_obj_alloc(anon_allocator);
   if (anon) {
-    list_init(&anon->mmo_respages);
-    anon->mmo_nrespages = 0;
-    anon->mmo_refcount = 1;
+    mmobj_init(anon, &anon_mmobj_ops);
+    ++anon->mmo_refcount;
   }
   return anon;
 }
