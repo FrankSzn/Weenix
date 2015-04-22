@@ -119,7 +119,7 @@ proc_t *proc_create(char *name) {
   new_proc->p_cwd = vfs_root_vn; // current working dir 
 
   // Fields unset:
-  // /* VM */
+  new_proc->p_vmmap = vmmap_create();
 
   dbg(DBG_INIT, "returning proc %s\n", name);
   return new_proc;

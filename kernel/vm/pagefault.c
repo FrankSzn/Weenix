@@ -49,13 +49,21 @@
  *              can be found in pagefault.h
  */
 void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
+  dbg(DBG_VM, "vaddr: 0x%lx\n", vaddr);
+  char out[1024];
+  vmmap_mapping_info(curproc->p_vmmap, &out, 1024);
+  dbg(DBG_VM, "%.*s\n", 1024, &out);
   uint32_t pn = ADDR_TO_PN(vaddr);
   vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, pn);
-  if (!vma)
+  if (!vma) {
+    dbg(DBG_VM, "SEGFAULT!\n");
     proc_kill(curproc, EFAULT);
+  }
   if (((cause & FAULT_WRITE) && !(PROT_WRITE & vma->vma_prot)) ||
-      ((cause & FAULT_EXEC) && !(PROT_EXEC & vma->vma_prot)))
+      ((cause & FAULT_EXEC) && !(PROT_EXEC & vma->vma_prot))) {
+    dbg(DBG_VM, "SEGFAULT!\n");
     proc_kill(curproc, EFAULT);
+  }
   pframe_t *pf;
   int status = pframe_get(vma->vma_obj, pn, &pf);
   KASSERT(!status);

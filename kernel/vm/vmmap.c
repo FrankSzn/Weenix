@@ -24,6 +24,8 @@
 #include "mm/mman.h"
 #include "mm/mmobj.h"
 
+void print_mapping_info(vmmap_t *map);
+
 static slab_allocator_t *vmmap_allocator;
 static slab_allocator_t *vmarea_allocator;
 
@@ -77,7 +79,7 @@ void vmmap_destroy(vmmap_t *map) {
  * of VM areas, and adding it. Don't forget to set the vma_vmmap for the
  * area. */
 void vmmap_insert(vmmap_t *map, vmarea_t *newvma) {
-  dbg(DBG_VMMAP, "\n");
+  dbg(DBG_VMMAP, "map: %p\n", map);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (newvma->vma_start < vma->vma_start) {
@@ -85,6 +87,7 @@ void vmmap_insert(vmmap_t *map, vmarea_t *newvma) {
       goto end;
     }
   } list_iterate_end();
+  list_insert_head(&map->vmm_list, &newvma->vma_plink);
 end:
   newvma->vma_vmmap = map;
 }
@@ -129,12 +132,13 @@ int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
  * return NULL. */
 // CONVENTION: page number, not address
 vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
-  dbg(DBG_VMMAP, "vfn: %d\n", vfn);
+  dbg(DBG_VMMAP, "map: %p vfn: %d\n", map, vfn);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (vma->vma_start <= vfn && vfn < vma->vma_end)
       return vma;
   } list_iterate_end();
+  dbg(DBG_VMMAP, "not found!\n");
   return NULL;
 }
 
@@ -181,7 +185,7 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
  */
 int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
               int prot, int flags, off_t off, int dir, vmarea_t **new) {
-  dbg(DBG_VMMAP, "npages: %d\n", npages);
+  dbg(DBG_VMMAP, "lopage: 0x%x npages: %d\n", lopage, npages);
   // Validate input
   KASSERT(flags & MAP_PRIVATE || flags & MAP_SHARED);
   KASSERT(PAGE_ALIGNED(off));
@@ -198,7 +202,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
       return -ENOMEM; 
     lopage = status;
     KASSERT(vmmap_lookup(map, lopage) == NULL);
-  } else { // Unlap overlapping area if one exists
+  } else { // Unmap overlapping area if one exists
     vmarea_t *existing;
     if ((existing = vmmap_lookup(map, lopage)))
       vmmap_remove(map, lopage, npages);
@@ -230,9 +234,12 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
 
   vmmap_insert(map, new_area);
 
-  if (new) {
-    *new = new_area;
-  }
+  if (new) *new = new_area;
+
+  char out[1024];
+  vmmap_mapping_info(map, &out, 1024);
+  dbg(DBG_VM, "%.*s\n", 1024, &out);
+
   return 0;
 }
 
@@ -281,8 +288,9 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
         vma->vma_end = lopage;
         new_vma->vma_start = highpage;
         vmmap_insert(map, new_vma);
-        KASSERT(vma->vma_end - vma->vma_start);
-        KASSERT(new_vma->vma_end - new_vma->vma_start);
+        // TODO: clean up if zero?
+        //KASSERT(vma->vma_end - vma->vma_start);
+        //KASSERT(new_vma->vma_end - new_vma->vma_start);
       } else { // Case 2
         vma->vma_end = lopage;
       }
@@ -318,15 +326,13 @@ int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
 // Abstraction for reading and writing
 int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int write) {
   dbg(DBG_VMMAP, "vaddr: %p count: %d\n", vaddr, count);
+  print_mapping_info(map);
   int ndone_total = 0;
   while (count) {
     // Find the page
     uint32_t pagenum = ADDR_TO_PN(vaddr + ndone_total);
     vmarea_t *vma = vmmap_lookup(map, pagenum);
-    if (!vma) {
-      dbg(DBG_VMMAP, "page not found\n");
-      return ndone_total;
-    }
+    KASSERT(vma);
     pframe_t *pframe;
     pframe_get(vma->vma_obj, pagenum - vma->vma_start + vma->vma_off, &pframe);
     KASSERT(pframe && pframe->pf_addr);
@@ -345,6 +351,7 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
     count -= ndone;
     ndone_total += ndone;
   }
+  dbg(DBG_VMMAP, "did %d bytes\n", ndone_total);
   return ndone_total;
 }
 
@@ -417,4 +424,11 @@ end:
   }
   */
   return osize - size;
+}
+
+void print_mapping_info(vmmap_t *map) {
+  char buf[2048];
+  int out = vmmap_mapping_info(map, &buf, 2048);
+  buf[out] = '\0';
+  dbg(DBG_VMMAP, "%.*s\n", 2048, &buf);
 }
