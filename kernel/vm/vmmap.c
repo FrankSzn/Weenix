@@ -132,7 +132,7 @@ int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
  * return NULL. */
 // CONVENTION: page number, not address
 vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
-  dbg(DBG_VMMAP, "map: %p vfn: %d\n", map, vfn);
+  dbg(DBG_VMMAP, "map: 0x%p vfn: %d vaddr: 0x%x\n", map, vfn, vfn*PAGE_SIZE);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (vma->vma_start <= vfn && vfn < vma->vma_end)
@@ -219,16 +219,17 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   new_area->vma_off = off;
   new_area->vma_flags = flags;
 
-  // Call mmap
   // TODO: refcounts here
-  if (flags & MAP_PRIVATE) {
-    new_area->vma_obj = shadow_create();
-  } else { 
-    if (!file) {
-      new_area->vma_obj = anon_create();
-    } else {
+  if (file) {
+    if (flags & MAP_PRIVATE) { // Private mapping (shadow object)
+      new_area->vma_obj = shadow_create();
+      new_area->vma_obj->mmo_shadowed = &file->vn_mmobj;
       file->vn_ops->mmap(file, new_area, &new_area->vma_obj);
+    } else {
+      file->vn_ops->mmap(file, new_area, &new_area->vma_obj->mmo_shadowed);
     }
+  } else { // No file (anonymous)
+    new_area->vma_obj = anon_create();
   }
   KASSERT(new_area->vma_obj);
 
@@ -352,7 +353,7 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
     ndone_total += ndone;
   }
   dbg(DBG_VMMAP, "did %d bytes\n", ndone_total);
-  return ndone_total;
+  return 0;
 }
 
 /* Read into 'buf' from the virtual address space of 'map' starting at
@@ -430,5 +431,5 @@ void print_mapping_info(vmmap_t *map) {
   char buf[2048];
   int out = vmmap_mapping_info(map, &buf, 2048);
   buf[out] = '\0';
-  dbg(DBG_VMMAP, "%.*s\n", 2048, &buf);
+  dbg(DBG_VMMAP, "\n%.*s\n", 2048, &buf);
 }

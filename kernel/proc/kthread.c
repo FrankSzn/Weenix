@@ -151,6 +151,8 @@ void kthread_exit(void *retval) {
  */
 kthread_t *kthread_clone(kthread_t *thr) {
   NOT_YET_IMPLEMENTED("VM: kthread_clone");
+  //kthread_t new_thr = kthread_create(thr->kt_proc, func, arg1, arg2);
+
   return NULL;
 }
 

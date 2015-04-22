@@ -54,5 +54,17 @@
  */
 int do_brk(void *addr, void **ret) {
   NOT_YET_IMPLEMENTED("VM: do_brk");
+  if (!addr)
+    return (int)curproc->p_brk;
+  if (addr < curproc->p_start_brk)
+    return -ENOMEM;
+  vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, curproc->p_brk);
+  KASSERT(vma);
+  uint32_t lopage = vma->vma_start;
+  uint32_t highpage = ADDR_TO_PN(PAGE_ALIGN_UP(addr));
+  vmmap_map(curproc->p_vmmap, NULL, lopage, highpage - lopage, 
+      PROT_READ | PROT_WRITE, MAP_PRIVATE, 0, VMMAP_DIR_LOHI, &vma);
+  KASSERT(vma);
+  curproc->p_brk = addr;
   return 0;
 }

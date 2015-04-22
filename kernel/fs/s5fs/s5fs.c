@@ -405,6 +405,7 @@ static int s5fs_write(vnode_t *vnode, off_t offset, const void *buf,
  * Don't worry about this until VM.
  */
 static int s5fs_mmap(vnode_t *file, vmarea_t *vma, mmobj_t **ret) {
+  dbg(DBG_S5FS, "\n");
   vref(file);
   if (ret) *ret = &file->vn_mmobj;
   return 0;
@@ -709,7 +710,12 @@ static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
   KASSERT(vnode);
   KASSERT(pagebuf);
   KASSERT(PAGE_ALIGNED(pagebuf));
-  KASSERT(vnode->vn_mutex.km_holder == curthr);
+  int locked = 0;
+  // TODO: this seems like a hack
+  if (vnode->vn_mutex.km_holder != curthr) {
+    kmutex_lock(&vnode->vn_mutex);
+    locked = 1;
+  }
   // Find block
   int block_no = s5_seek_to_block(vnode, offset, 0);
   if (block_no < 0) { // Error
@@ -724,6 +730,7 @@ static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
   } else { // Sparse block, fill with zeros
     memset(pagebuf, 0, S5_BLOCK_SIZE);
   }
+  if (locked) kmutex_unlock(&vnode->vn_mutex);
   return status;
 }
 
