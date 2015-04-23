@@ -110,6 +110,7 @@ static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
     dbg(DBG_VM, "not yet implemented\n");
   } else { // First shadow object with given page resident
     while (o) {
+      // TODO: handle base case
       *pf = pframe_get_resident(o, pagenum);
       if (*pf) { // Already resident
         while (pframe_is_busy(*pf)) {// Wait until not busy

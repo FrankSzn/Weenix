@@ -39,8 +39,7 @@ int kshell_write(kshell_t *ksh, const void *buf, size_t nbytes) {
      * all of them, are written.
      */
     if (retval >= 0) {
-      panic("kshell: Write unsuccessfull. Expected %u, got %d\n", nbytes,
-            retval);
+      //dbg(DBG_KSHELL, ("kshell: Write unsuccessfull. Expected %u, got %d\n", nbytes, retval);
     }
   }
 

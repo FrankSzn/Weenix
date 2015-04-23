@@ -73,6 +73,7 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
     block_index -= S5_NDIRECT_BLOCKS;
     if (block_index >= S5_NIDIRECT_BLOCKS)
       return -EFBIG;
+    // TODO: ALLOCATE INDIRECT BLOCK
     int status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
         inode->s5_indirect_block, &pframe);
     if (status) return status;

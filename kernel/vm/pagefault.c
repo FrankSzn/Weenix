@@ -49,29 +49,34 @@
  *              can be found in pagefault.h
  */
 void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
-  dbg(DBG_VM, "vaddr: 0x%lx\n", vaddr);
+  dbg(DBG_VM, "vaddr: %p\n", vaddr);
   char out[1024];
   vmmap_mapping_info(curproc->p_vmmap, &out, 1024);
   dbg(DBG_VM, "\n%.*s\n", 1024, &out);
   uint32_t pn = ADDR_TO_PN(vaddr);
   vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, pn);
-  if (!vma) {
+  if (!vma) { // Page not mapped
     dbg(DBG_VM, "SEGFAULT!\n");
     proc_kill(curproc, EFAULT);
+    return;
   }
+  // Check permissions
   if (((cause & FAULT_WRITE) && !(PROT_WRITE & vma->vma_prot)) ||
       ((cause & FAULT_EXEC) && !(PROT_EXEC & vma->vma_prot))) {
     dbg(DBG_VM, "SEGFAULT!\n");
     proc_kill(curproc, EFAULT);
+    return;
   }
   pframe_t *pf;
+  // TODO: lookup page (for shadow objects)
   int status = pframe_get(vma->vma_obj, 
       pn - vma->vma_start + vma->vma_off, &pf);
-  KASSERT(!status);
   // TODO: check flags, handle copy on write
   int flags = PD_PRESENT | PD_USER;
   if (PROT_WRITE & vma->vma_prot) flags |= PD_WRITE;
   if (cause & FAULT_WRITE) pframe_dirty(pf);
-  KASSERT(!pt_map(curproc->p_pagedir, pn << PAGE_SHIFT, 
-        (uintptr_t)pf->pf_addr, flags, 0));
+  if (pt_map(curproc->p_pagedir, PAGE_ALIGN_DOWN(vaddr), 
+        pt_virt_to_phys((uintptr_t)pf->pf_addr), flags, flags)) {
+    proc_kill(curproc, ENOMEM);
+  }
 }
