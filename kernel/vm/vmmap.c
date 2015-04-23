@@ -148,12 +148,16 @@ vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
  * called when implementing fork(2). */
 vmmap_t *vmmap_clone(vmmap_t *map) {
   dbg(DBG_VMMAP, "\n");
-  NOT_YET_IMPLEMENTED("VM: vmmap_clone");
-  vmmap_t *new_map = slab_obj_alloc(vmmap_allocator);
+  vmmap_t *new_map = vmmap_create();
   KASSERT(new_map);
+  new_map->vmm_proc = map->vmm_proc;
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-
+    vmarea_t *new_vma = vmarea_alloc();
+    KASSERT(new_vma);
+    memcpy(new_vma, vma, sizeof(vmarea_t));
+    new_vma->vma_vmmap = NULL;
+    list_insert_tail(&new_map->vmm_list, &new_vma->vma_plink);
   } list_iterate_end();
   return new_map;
 }
