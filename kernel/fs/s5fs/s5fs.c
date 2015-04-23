@@ -539,6 +539,7 @@ static int s5fs_unlink(vnode_t *dir, const char *name, size_t namelen) {
 }
 
 /*
+ * THIS COMMENT IS TOTALLY WRONG
  * See the comment in vnode.h for what is expected of this function.
  *
  * You need to create the "." and ".." directory entries in the new
@@ -595,7 +596,6 @@ static int s5fs_mkdir(vnode_t *dir, const char *name, size_t namelen) {
   kmutex_unlock(&dir->vn_mutex);
   kmutex_unlock(&new_dir->vn_mutex);
   vput(new_dir);
-  // TODO: what the fuck happens to this vnode?
   KASSERT(new_dir->vn_refcount == 1);
   return status;
 }

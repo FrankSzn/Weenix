@@ -59,7 +59,6 @@ static int s5_alloc_block(s5fs_t *);
  */
 int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
   dbg(DBG_S5FS, "vno: %d seekptr: %d\n", vnode->vn_vno, seekptr);
-  // TODO: pin inode. Otherwise looks good
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(inode);
   KASSERT(curthr == vnode->vn_mutex.km_holder);
@@ -83,6 +82,7 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
     if (!alloc) // Can't allocate a new block, return zero
       return 0;
     // Allocate new block
+    // TODO: pin here
     blocknum = s5_alloc_block(VNODE_TO_S5FS(vnode));
     if (blocknum <= 0) {
       return blocknum;
@@ -141,9 +141,12 @@ int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int
     }
 
     // Do the operation on this page
+    // TODO: zero out allocated sparse block
     if (write) {
+      pframe_pin(pframe);
       pframe_dirty(pframe);
       memcpy(pframe->pf_addr + offset, buf + ndone_total, ndone);
+      pframe_unpin(pframe);
     } else {
       memcpy(buf + ndone_total, pframe->pf_addr + offset, ndone);
     }
