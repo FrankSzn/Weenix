@@ -66,6 +66,7 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
   uint32_t blocknum;
   int indirect = 0; // Bool, true if indirect block
   pframe_t *pframe;
+  // TODO: pin as necessary
   if (block_index < S5_NDIRECT_BLOCKS) { // Direct blocks
     blocknum = inode->s5_direct_blocks[block_index];
   } else { // Indirect blocks
@@ -73,17 +74,24 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
     block_index -= S5_NDIRECT_BLOCKS;
     if (block_index >= S5_NIDIRECT_BLOCKS)
       return -EFBIG;
-    // TODO: ALLOCATE INDIRECT BLOCK
+    int allocated_indirect = 0;
+    if (!inode->s5_indirect_block) { // Allocate indirect if we need to
+      inode->s5_indirect_block = s5_alloc_block(VNODE_TO_S5FS(vnode));
+      allocated_indirect = 1;
+    }
     int status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
         inode->s5_indirect_block, &pframe);
     if (status) return status;
+    if (allocated_indirect) {
+      pframe_dirty(pframe);
+      memset(pframe->pf_addr, 0, PAGE_SIZE);
+    }
     blocknum = ((uint32_t *)pframe->pf_addr)[block_index];
   }
   if (!blocknum) { // Blocknum is zero, must be sparse
     if (!alloc) // Can't allocate a new block, return zero
       return 0;
     // Allocate new block
-    // TODO: pin here
     blocknum = s5_alloc_block(VNODE_TO_S5FS(vnode));
     if (blocknum <= 0) {
       return blocknum;

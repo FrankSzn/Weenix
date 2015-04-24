@@ -108,20 +108,24 @@ static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
                              pframe_t **pf) {
   if (forwrite) { // Copy-on-write
     dbg(DBG_VM, "not yet implemented\n");
+    int status = pframe_get(o, pagenum, pf);
   } else { // First shadow object with given page resident
     while (o) {
-      // TODO: handle base case
-      *pf = pframe_get_resident(o, pagenum);
-      if (*pf) { // Already resident
-        while (pframe_is_busy(*pf)) {// Wait until not busy
-          sched_cancellable_sleep_on(&(*pf)->pf_waitq);
-          *pf = pframe_get_resident(o, pagenum);
+      if (o->mmo_shadowed) { // Shadow object
+        *pf = pframe_get_resident(o, pagenum);
+        if (*pf) { // Already resident
+          while (pframe_is_busy(*pf)) {// Wait until not busy
+            sched_cancellable_sleep_on(&(*pf)->pf_waitq);
+            *pf = pframe_get_resident(o, pagenum);
+          }
+          return 0;
         }
-        return 0;
-      }
         o = o->mmo_shadowed;
+      } else { // Not a shadow object
+        return pframe_get(o, pagenum, pf);
       }
     }
+  }
   return -1;
 }
 
@@ -157,9 +161,13 @@ static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
 /* These next two functions are not difficult. */
 
 static int shadow_dirtypage(mmobj_t *o, pframe_t *pf) {
-  return o->mmo_shadowed->mmo_ops->dirtypage(o->mmo_shadowed, pf);
+  KASSERT(o->mmo_shadowed);
+  return 0;
+  //return o->mmo_shadowed->mmo_ops->dirtypage(o->mmo_shadowed, pf);
 }
 
 static int shadow_cleanpage(mmobj_t *o, pframe_t *pf) {
-  return o->mmo_shadowed->mmo_ops->cleanpage(o->mmo_shadowed, pf);
+  KASSERT(o->mmo_shadowed);
+  return 0;
+  // return o->mmo_shadowed->mmo_ops->cleanpage(o->mmo_shadowed, pf);
 }
