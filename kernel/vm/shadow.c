@@ -107,8 +107,7 @@ static void shadow_put(mmobj_t *o) {
 static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
                              pframe_t **pf) {
   if (forwrite) { // Copy-on-write
-    dbg(DBG_VM, "not yet implemented\n");
-    int status = pframe_get(o, pagenum, pf);
+    return pframe_get(o, pagenum, pf);
   } else { // First shadow object with given page resident
     while (o) {
       if (o->mmo_shadowed) { // Shadow object
@@ -121,7 +120,7 @@ static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
           return 0;
         }
         o = o->mmo_shadowed;
-      } else { // Not a shadow object
+      } else { // Bottom of chain, not a shadow object
         return pframe_get(o, pagenum, pf);
       }
     }
@@ -141,21 +140,20 @@ static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
  * recursive implementation can overflow the kernel stack when
  * looking down a long shadow chain */
 static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
-  NOT_YET_IMPLEMENTED("VM: shadow_fillpage");
   pframe_t *page;
   while (o) {
     page = pframe_get_resident(o, pf->pf_pagenum);
     if (page) { // Already resident
-      while (pframe_is_busy(page)) {// Wait until not busy
+      while (pframe_is_busy(page)) { // Wait until not busy
         sched_cancellable_sleep_on(&(page)->pf_waitq);
         page = pframe_get_resident(o, pf->pf_pagenum);
       }
-      pf->pf_addr = page->pf_addr;
+      memcpy(pf->pf_addr, page->pf_addr, PAGE_SIZE);
       return 0;
     }
     o = o->mmo_shadowed;
   }
-  return 0;
+  return -1;
 }
 
 /* These next two functions are not difficult. */
@@ -163,11 +161,9 @@ static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
 static int shadow_dirtypage(mmobj_t *o, pframe_t *pf) {
   KASSERT(o->mmo_shadowed);
   return 0;
-  //return o->mmo_shadowed->mmo_ops->dirtypage(o->mmo_shadowed, pf);
 }
 
 static int shadow_cleanpage(mmobj_t *o, pframe_t *pf) {
   KASSERT(o->mmo_shadowed);
   return 0;
-  // return o->mmo_shadowed->mmo_ops->cleanpage(o->mmo_shadowed, pf);
 }

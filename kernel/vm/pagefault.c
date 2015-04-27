@@ -71,12 +71,13 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   return;
   }
   pframe_t *pf;
-  int status = pframe_get(vma->vma_obj, 
-      pn - vma->vma_start + vma->vma_off, &pf);
+  int forwrite = cause & FAULT_WRITE ? 1 : 0;
+  int status = pframe_lookup(vma->vma_obj, 
+      pn - vma->vma_start + vma->vma_off, forwrite, &pf);
+  KASSERT(!status);
   int flags = PD_PRESENT | PD_USER;
   if (PROT_WRITE & vma->vma_prot) flags |= PD_WRITE;
   if (cause & FAULT_WRITE) pframe_dirty(pf);
-  dbg(DBG_VM, "pfaddr: %p\n", pf->pf_addr);
   if (pt_map(curproc->p_pagedir, PAGE_ALIGN_DOWN(vaddr), 
         pt_virt_to_phys((uintptr_t)pf->pf_addr), flags, flags)) {
     proc_kill(curproc, ENOMEM);

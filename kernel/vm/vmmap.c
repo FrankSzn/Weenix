@@ -79,15 +79,16 @@ void vmmap_destroy(vmmap_t *map) {
  * of VM areas, and adding it. Don't forget to set the vma_vmmap for the
  * area. */
 void vmmap_insert(vmmap_t *map, vmarea_t *newvma) {
-  dbg(DBG_VMMAP, "map: %p\n", map);
+  dbg(DBG_VMMAP, "map: %p start: %p\n", map, newvma->vma_start * PAGE_SIZE);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (newvma->vma_start < vma->vma_start) {
+      dbg(DBG_VMMAP, "inserting before: %p\n", vma->vma_start * PAGE_SIZE);
       list_insert_before(&vma->vma_plink, &newvma->vma_plink);
       goto end;
     }
   } list_iterate_end();
-  list_insert_head(&map->vmm_list, &newvma->vma_plink);
+  list_insert_tail(&map->vmm_list, &newvma->vma_plink);
 end:
   newvma->vma_vmmap = map;
 }
@@ -132,7 +133,7 @@ int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
  * return NULL. */
 // CONVENTION: page number, not address
 vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
-  dbg(DBG_VMMAP, "map: 0x%p vfn: %d vaddr: 0x%x\n", map, vfn, vfn*PAGE_SIZE);
+  dbg(DBG_VMMAP, "map: 0x%p vaddr: 0x%p\n", map, vfn*PAGE_SIZE);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (vma->vma_start <= vfn && vfn < vma->vma_end)
@@ -189,7 +190,7 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
  */
 int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
               int prot, int flags, off_t off, int dir, vmarea_t **new) {
-  dbg(DBG_VMMAP, "lopage: 0x%x npages: %d\n", lopage, npages);
+  dbg(DBG_VMMAP, "lopage: 0x%p npages: %d\n", lopage, npages);
   // Validate input
   KASSERT(flags & MAP_PRIVATE || flags & MAP_SHARED);
   KASSERT(PAGE_ALIGNED(off));
@@ -221,15 +222,12 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   new_area->vma_off = off;
   new_area->vma_flags = flags;
 
-  // TODO: refcounts here
   if (file) {
-    // TODO: shadow objects if private mapping
     if (flags & MAP_PRIVATE) { // Private mapping (shadow object)
       new_area->vma_obj = shadow_create();
-      new_area->vma_obj->mmo_shadowed = &file->vn_mmobj;
-      file->vn_ops->mmap(file, new_area, &new_area->vma_obj);
-    } else {
       file->vn_ops->mmap(file, new_area, &new_area->vma_obj->mmo_shadowed);
+    } else {
+      file->vn_ops->mmap(file, new_area, &new_area->vma_obj);
     }
   } else { // No file (anonymous)
     new_area->vma_obj = anon_create();
@@ -284,14 +282,14 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
  * list.
  */
 int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
-  dbg(DBG_VMMAP, "lopage: %d npages: %d\n", lopage, npages);
+  uint32_t highpage = lopage + npages;
+  dbg(DBG_VMMAP, "0x%p - 0x%p\n", lopage*PAGE_SIZE, highpage*PAGE_SIZE);
   KASSERT(npages);
   vmarea_t *vma;
-  uint32_t highpage = lopage + npages;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-    if (vma->vma_start <= lopage) {
-      if (highpage <= vma->vma_end) { // Case 1
-        // Split area
+    if (vma->vma_start < lopage) {
+      if (highpage < vma->vma_end) { // Case 1, split area
+        dbg(DBG_VMMAP, "case 1\n");
         vmarea_t *new_vma = vmarea_alloc();
         KASSERT(new_vma);
         memcpy(new_vma, vma, sizeof(vmarea_t));
@@ -299,18 +297,21 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
         vma->vma_end = lopage;
         new_vma->vma_start = highpage;
         vmmap_insert(map, new_vma);
-        // TODO: clean up if zero?
-        //KASSERT(vma->vma_end - vma->vma_start);
-        //KASSERT(new_vma->vma_end - new_vma->vma_start);
-      } else { // Case 2
+        KASSERT(vma->vma_end - vma->vma_start);
+        KASSERT(new_vma->vma_end - new_vma->vma_start);
+      } else if (lopage < vma->vma_end) { // Case 2
+        dbg(DBG_VMMAP, "case 2\n");
         vma->vma_end = lopage;
+        KASSERT(vma->vma_end - vma->vma_start);
       }
-    } else if (highpage <= vma->vma_end) { // Case 3
+    } else if (highpage < vma->vma_end) { // Case 3
+      dbg(DBG_VMMAP, "case 3\n");
       vma->vma_off -= highpage - vma->vma_start;
       vma->vma_start = highpage;
-    } else if (lopage <= vma->vma_start && vma->vma_end <= highpage) { // Case 4
-      list_remove(&vma->vma_olink);
-      // TODO: destroy vmarea
+      KASSERT(vma->vma_end - vma->vma_start);
+    } else if (vma->vma_end <= highpage) { // Case 4
+      dbg(DBG_VMMAP, "case 4\n");
+      list_remove(&vma->vma_plink);
     }
   } list_iterate_end();
   KASSERT(!vmmap_lookup(map, lopage));
