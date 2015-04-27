@@ -297,7 +297,7 @@ int pframe_get(struct mmobj *o, uint32_t pagenum, pframe_t **result) {
     dbg(DBG_PFRAME, "allocated new pframe %p\n", *result);
     int status = pframe_fill(*result);
     if (status) return status;
-    if (page_free_count() == nfreepages_target) {
+    if (pageoutd_needed()) {
       pframe_pin(*result);
       pageoutd_wakeup();
       sched_sleep_on(&alloc_waitq);

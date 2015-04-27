@@ -200,6 +200,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
       prot == (PROT_WRITE | PROT_EXEC) ||
       prot == (PROT_READ | PROT_EXEC | PROT_WRITE));
   vmarea_t *new_area;
+  int unmap = 0;
   if (!lopage) { // Find a region big enough
     int status = vmmap_find_range(map, npages, dir);
     if (status < 0)
@@ -207,10 +208,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
     lopage = status;
     KASSERT(vmmap_lookup(map, lopage) == NULL);
   } else { // Unmap overlapping area if one exists
-    vmarea_t *existing;
-    if ((existing = vmmap_lookup(map, lopage)))
-      vmmap_remove(map, lopage, npages);
-    KASSERT(vmmap_lookup(map, lopage) == NULL);
+    unmap = 1;
   }
   // Initialize new vmarea
   new_area = vmarea_alloc();
@@ -225,6 +223,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
 
   // TODO: refcounts here
   if (file) {
+    // TODO: shadow objects if private mapping
     if (flags & MAP_PRIVATE) { // Private mapping (shadow object)
       new_area->vma_obj = shadow_create();
       new_area->vma_obj->mmo_shadowed = &file->vn_mmobj;
@@ -236,6 +235,13 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
     new_area->vma_obj = anon_create();
   }
   KASSERT(new_area->vma_obj);
+
+  if (unmap) {
+    vmarea_t *existing;
+    if ((existing = vmmap_lookup(map, lopage)))
+      vmmap_remove(map, lopage, npages);
+    KASSERT(vmmap_lookup(map, lopage) == NULL);
+  }
 
   vmmap_insert(map, new_area);
 
