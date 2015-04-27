@@ -50,7 +50,7 @@ mmobj_t *anon_create() {
   mmobj_t *anon = (mmobj_t *)slab_obj_alloc(anon_allocator);
   if (anon) {
     mmobj_init(anon, &anon_mmobj_ops);
-    ++anon->mmo_refcount;
+    ++anon->mmo_refcount; // initial refcount is 1
   }
   return anon;
 }
@@ -61,7 +61,7 @@ mmobj_t *anon_create() {
  * Increment the reference count on the object.
  */
 static void anon_ref(mmobj_t *o) { 
-  ++o->mmo_refcount;
+  dbg(DBG_ANON, "up to %d\n", ++o->mmo_refcount);
 }
 
 /*
@@ -72,16 +72,20 @@ static void anon_ref(mmobj_t *o) {
  * never be used again. You should unpin and uncache all of the
  * object's pages and then free the object itself.
  */
-static void anon_put(mmobj_t *o) { 
-  if (--o->mmo_refcount == 0) {
+static void anon_put(mmobj_t *o) {
+  KASSERT(o->mmo_refcount > 0);
+  dbg(DBG_ANON, "mmobj %p down to %d, respages %d\n", 
+      o, o->mmo_refcount - 1, o->mmo_nrespages);
+  if (--o->mmo_refcount == o->mmo_nrespages) {
     pframe_t *pf;
     list_iterate_begin(&o->mmo_respages, pf, pframe_t, pf_olink) {
       pframe_unpin(pf);
+      ++o->mmo_refcount;
       pframe_free(pf);
     } list_iterate_end();
+    KASSERT(0 == o->mmo_nrespages);
+    slab_obj_free(anon_allocator, o);
   }
-  KASSERT(0 == o->mmo_nrespages);
-  slab_obj_free(anon_allocator, o);
 }
 
 /* Get the corresponding page from the mmobj. No special handling is

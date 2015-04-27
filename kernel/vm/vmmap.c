@@ -69,6 +69,7 @@ void vmmap_destroy(vmmap_t *map) {
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     list_remove(&vma->vma_olink);
     list_remove(&vma->vma_plink);
+    vma->vma_obj->mmo_ops->put(vma->vma_obj);
     vmarea_free(vma);
   } list_iterate_end();
   slab_obj_free(vmmap_allocator, map);
@@ -157,7 +158,8 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
     vmarea_t *new_vma = vmarea_alloc();
     KASSERT(new_vma);
     memcpy(new_vma, vma, sizeof(vmarea_t));
-    new_vma->vma_vmmap = NULL;
+    new_vma->vma_vmmap = new_map;
+    vma->vma_obj->mmo_ops->ref(vma->vma_obj); // Incr. refcount
     list_insert_tail(&new_map->vmm_list, &new_vma->vma_plink);
   } list_iterate_end();
   return new_map;
@@ -191,6 +193,7 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
 int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
               int prot, int flags, off_t off, int dir, vmarea_t **new) {
   dbg(DBG_VMMAP, "lopage: 0x%p npages: %d\n", lopage, npages);
+  if (file) dbg(DBG_VMMAP, "vno: %d\n", file->vn_vno);
   // Validate input
   KASSERT(flags & MAP_PRIVATE || flags & MAP_SHARED);
   KASSERT(PAGE_ALIGNED(off));
@@ -225,6 +228,8 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   if (file) {
     if (flags & MAP_PRIVATE) { // Private mapping (shadow object)
       new_area->vma_obj = shadow_create();
+      KASSERT(new_area->vma_obj);
+      dbg(DBG_VMMAP, "allocated shadow object: 0x%p\n", new_area->vma_obj);
       file->vn_ops->mmap(file, new_area, &new_area->vma_obj->mmo_shadowed);
     } else {
       file->vn_ops->mmap(file, new_area, &new_area->vma_obj);
@@ -247,7 +252,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
 
   char out[1024];
   vmmap_mapping_info(map, &out, 1024);
-  dbg(DBG_VM, "%.*s\n", 1024, &out);
+  dbg(DBG_VM, "\n%.*s\n", 1024, &out);
 
   return 0;
 }
@@ -312,6 +317,8 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
     } else if (vma->vma_end <= highpage) { // Case 4
       dbg(DBG_VMMAP, "case 4\n");
       list_remove(&vma->vma_plink);
+      list_remove(&vma->vma_olink);
+      vma->vma_obj->mmo_ops->put(vma->vma_obj);
     }
   } list_iterate_end();
   KASSERT(!vmmap_lookup(map, lopage));
@@ -338,7 +345,7 @@ int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
 // Abstraction for reading and writing
 int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int write) {
   dbg(DBG_VMMAP, "vaddr: %p count: %d\n", vaddr, count);
-  print_mapping_info(map);
+  //print_mapping_info(map);
   int ndone_total = 0;
   while (count) {
     // Find the page

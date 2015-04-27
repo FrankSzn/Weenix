@@ -172,7 +172,7 @@ int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int
     vnode->vn_len = new_size;
     s5_dirty_inode(VNODE_TO_S5FS(vnode), inode);
   }
-  dbg(DBG_S5FS, "did %d bytes\n", ndone_total);
+  //dbg(DBG_S5FS, "did %d bytes\n", ndone_total);
   return ndone_total;
 }
 

@@ -380,7 +380,7 @@ void pframe_pin(pframe_t *pf) {
  * @param pf a pinned page (a page with a positive pin count)
  */
 void pframe_unpin(pframe_t *pf) { 
-  dbg(DBG_PFRAME, "%d\n", pf->pf_pagenum);
+  dbg(DBG_PFRAME, "%d down to %d\n", pf->pf_pagenum, pf->pf_pincount - 1);
   if (!--pf->pf_pincount) {
     list_remove(&pf->pf_link);
     list_insert_tail(&alloc_list, &pf->pf_link);

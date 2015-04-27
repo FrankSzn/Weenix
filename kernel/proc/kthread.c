@@ -150,10 +150,15 @@ void kthread_exit(void *retval) {
  * You do not need to worry about this until VM.
  */
 kthread_t *kthread_clone(kthread_t *thr) {
-  NOT_YET_IMPLEMENTED("VM: kthread_clone");
-  //kthread_t new_thr = kthread_create(thr->kt_proc, func, arg1, arg2);
-
-  return NULL;
+  dbg(DBG_VM, "pid: %d\n", thr->kt_proc->p_pid);
+  kthread_t *new_kt = slab_obj_alloc(kthread_allocator);
+  KASSERT(new_kt);
+  memcpy(new_kt, thr, sizeof(kthread_t));
+  new_kt->kt_kstack = alloc_stack();
+  KASSERT(new_kt->kt_kstack);
+  list_link_init(&new_kt->kt_qlink);
+  list_link_init(&new_kt->kt_plink);
+  return new_kt;
 }
 
 /*

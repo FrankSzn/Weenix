@@ -84,15 +84,21 @@ static void shadow_ref(mmobj_t *o) { ++o->mmo_refcount; }
  * pages and then free the object itself.
  */
 static void shadow_put(mmobj_t *o) { 
-  if (--o->mmo_refcount == 0) {
+  KASSERT(o->mmo_refcount > 0);
+  dbg(DBG_VM, "mmobj %p down to %d, respages %d\n", 
+      o, o->mmo_refcount - 1, o->mmo_nrespages);
+  if (--o->mmo_refcount == o->mmo_nrespages) {
     pframe_t *pf;
     list_iterate_begin(&o->mmo_respages, pf, pframe_t, pf_olink) {
       pframe_unpin(pf);
+      ++o->mmo_refcount;
       pframe_free(pf);
     } list_iterate_end();
+    KASSERT(0 == o->mmo_nrespages);
+    if (o->mmo_shadowed)
+      o->mmo_shadowed->mmo_ops->put(o->mmo_shadowed);
+    slab_obj_free(shadow_allocator, o);
   }
-  KASSERT(0 == o->mmo_nrespages);
-  slab_obj_free(shadow_allocator, o);
 }
 
 /* This function looks up the given page in this shadow object. The
@@ -106,6 +112,7 @@ static void shadow_put(mmobj_t *o) {
  * can overflow the kernel stack when looking down a long shadow chain */
 static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
                              pframe_t **pf) {
+  dbg(DBG_VM, "\n");
   if (forwrite) { // Copy-on-write
     return pframe_get(o, pagenum, pf);
   } else { // First shadow object with given page resident
@@ -140,16 +147,23 @@ static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
  * recursive implementation can overflow the kernel stack when
  * looking down a long shadow chain */
 static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
+  dbg(DBG_VM, "\n");
   pframe_t *page;
   while (o) {
-    page = pframe_get_resident(o, pf->pf_pagenum);
-    if (page) { // Already resident
-      while (pframe_is_busy(page)) { // Wait until not busy
-        sched_cancellable_sleep_on(&(page)->pf_waitq);
-        page = pframe_get_resident(o, pf->pf_pagenum);
+    if (o->mmo_shadowed) { // Shadow object
+      page = pframe_get_resident(o, pf->pf_pagenum);
+      if (page) { // Already resident
+        while (pframe_is_busy(page)) { // Wait until not busy
+          sched_cancellable_sleep_on(&(page)->pf_waitq);
+          page = pframe_get_resident(o, pf->pf_pagenum);
+        }
+        memcpy(pf->pf_addr, page->pf_addr, PAGE_SIZE);
+        return 0;
       }
+    } else { // Base object, not a shadow object
+      int status = pframe_get(o, pf->pf_pagenum, &page);
       memcpy(pf->pf_addr, page->pf_addr, PAGE_SIZE);
-      return 0;
+      return status;
     }
     o = o->mmo_shadowed;
   }
