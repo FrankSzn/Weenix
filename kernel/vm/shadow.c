@@ -112,15 +112,17 @@ static void shadow_put(mmobj_t *o) {
  * can overflow the kernel stack when looking down a long shadow chain */
 static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
                              pframe_t **pf) {
-  dbg(DBG_VM, "\n");
   if (forwrite) { // Copy-on-write
+    dbg(DBG_VM, "copy-on-write 0x%p\n", o);
     return pframe_get(o, pagenum, pf);
   } else { // First shadow object with given page resident
     while (o) {
+      dbg(DBG_VM, "o: 0x%p\n", o);
       if (o->mmo_shadowed) { // Shadow object
         *pf = pframe_get_resident(o, pagenum);
         if (*pf) { // Already resident
-          while (pframe_is_busy(*pf)) {// Wait until not busy
+          dbg(DBG_VM, "found resident\n", o);
+          while (pframe_is_busy(*pf)) { // Wait until not busy
             sched_cancellable_sleep_on(&(*pf)->pf_waitq);
             *pf = pframe_get_resident(o, pagenum);
           }
@@ -147,20 +149,26 @@ static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
  * recursive implementation can overflow the kernel stack when
  * looking down a long shadow chain */
 static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
-  dbg(DBG_VM, "\n");
+  KASSERT(pframe_is_busy(pf));
   pframe_t *page;
-  while (o) {
+  // If this is called, the pf isn't resident in o
+  o = o->mmo_shadowed;
+  while (o) { 
+    dbg(DBG_VM, "o: 0x%p\n", o);
     if (o->mmo_shadowed) { // Shadow object
       page = pframe_get_resident(o, pf->pf_pagenum);
       if (page) { // Already resident
+        dbg(DBG_VM, "found resident\n", o);
         while (pframe_is_busy(page)) { // Wait until not busy
           sched_cancellable_sleep_on(&(page)->pf_waitq);
           page = pframe_get_resident(o, pf->pf_pagenum);
         }
         memcpy(pf->pf_addr, page->pf_addr, PAGE_SIZE);
+        pframe_pin(pf);
         return 0;
       }
     } else { // Base object, not a shadow object
+      pframe_pin(pf);
       int status = pframe_get(o, pf->pf_pagenum, &page);
       memcpy(pf->pf_addr, page->pf_addr, PAGE_SIZE);
       return status;

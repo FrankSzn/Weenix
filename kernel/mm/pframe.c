@@ -285,10 +285,12 @@ static int pframe_fill(pframe_t *pf) {
  * @return 0 on success, < 0 on failure.
  */
 int pframe_get(struct mmobj *o, uint32_t pagenum, pframe_t **result) {
+  dbg(DBG_PFRAME, "o: 0x%p\n", o);
   if (!result) return 0;
   *result = pframe_get_resident(o, pagenum);
   if (*result) { // Already resident
     while (pframe_is_busy(*result)) {// Wait until not busy
+      dbg(DBG_PFRAME, "page busy\n");
       sched_cancellable_sleep_on(&(*result)->pf_waitq);
       *result = pframe_get_resident(o, pagenum);
     }

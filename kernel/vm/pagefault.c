@@ -49,7 +49,7 @@
  *              can be found in pagefault.h
  */
 void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
-  dbg(DBG_VM, "vaddr: 0x%p cause: %d\n", vaddr, cause);
+  dbg(DBG_VM, "vaddr: 0x%p cause: %d pid: %d\n", vaddr, cause, curproc->p_pid);
   KASSERT(cause & FAULT_USER);
   //char out[1024];
   //vmmap_mapping_info(curproc->p_vmmap, &out, 1024);

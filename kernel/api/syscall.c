@@ -726,8 +726,10 @@ static void syscall_handler(regs_t *regs) {
   uint32_t sysnum = (uint32_t)regs->r_eax;
   uint32_t args = (uint32_t)regs->r_edx;
 
-  dbg(DBG_SYSCALL, ">> pid %d, sysnum: %d (%x), arg: %d (%#08x)\n",
-      curproc->p_pid, sysnum, sysnum, args, args);
+  if (sysnum != 39) {
+    dbg(DBG_SYSCALL, ">> pid %d, sysnum: %d (%x), arg: %d (%#08x)\n",
+        curproc->p_pid, sysnum, sysnum, args, args);
+  }
 
   if (curthr->kt_cancelled) {
     dbg(DBG_SYSCALL, "trap: CANCELLING: thread %p of proc %d "
@@ -737,7 +739,9 @@ static void syscall_handler(regs_t *regs) {
     kthread_exit(curthr->kt_retval);
   }
 
-  dbginfo(DBG_VMMAP, vmmap_mapping_info, curproc->p_vmmap);
+  if (sysnum != 39) {
+    dbginfo(DBG_VMMAP, vmmap_mapping_info, curproc->p_vmmap);
+  }
 
   int ret = syscall_dispatch(sysnum, args, regs);
 
@@ -749,8 +753,10 @@ static void syscall_handler(regs_t *regs) {
     kthread_exit(curthr->kt_retval);
   }
 
-  dbg(DBG_SYSCALL, "<< pid %d, sysnum: %d (%x), returned: %d (%#x)\n",
-      curproc->p_pid, sysnum, sysnum, ret, ret);
+  if (sysnum != 39) {
+    dbg(DBG_SYSCALL, "<< pid %d, sysnum: %d (%x), returned: %d (%#x)\n",
+        curproc->p_pid, sysnum, sysnum, ret, ret);
+  }
   regs->r_eax = ret; /* Return value goes in eax */
 }
 

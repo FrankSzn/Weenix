@@ -92,7 +92,7 @@ static void anon_put(mmobj_t *o) {
  * required. */
 static int anon_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
     pframe_t **pf) {
-  dbg(DBG_ANON, "\n");
+  dbg(DBG_ANON, "o: %p\n", o);
   KASSERT(NULL != pf);
   KASSERT(NULL != o);
   return pframe_get(o, pagenum, pf);
@@ -101,7 +101,8 @@ static int anon_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
 /* The following three functions should not be difficult. */
 
 static int anon_fillpage(mmobj_t *o, pframe_t *pf) {
-  dbg(DBG_ANON, "\n");
+  dbg(DBG_ANON, "o: %p\n", o);
+  KASSERT(pframe_is_busy(pf));
   pframe_pin(pf); // TODO: is this correct?
   memset(pf->pf_addr, 0, PAGE_SIZE);
   return 0;
