@@ -27,6 +27,7 @@ static __attribute__((unused)) void file_init(void) {
 init_func(file_init);
 
 void fref(file_t *f) {
+  KASSERT(f);
   KASSERT(f->f_mode >= 0 && f->f_mode < 8);
   KASSERT(f->f_pos >= -1);
   KASSERT(f->f_refcount >= 0);

@@ -49,6 +49,7 @@ static uint32_t fork_setup_stack(const regs_t *regs, void *kstack) {
  * Go forth and conquer.
  */
 int do_fork(struct regs *regs) {
+  dbg(DBG_FORK, "\n");
   // Set up new proc
   proc_t *new_proc = proc_create("");
   KASSERT(new_proc);
@@ -63,11 +64,15 @@ int do_fork(struct regs *regs) {
   new_proc->p_cwd = curproc->p_cwd;
 
   // Increment refcounts
+  dbg(DBG_FORK, "\n");
   memcpy(&new_proc->p_files, &curproc->p_files, sizeof(file_t)*NFILES);
-  for (int i = 0; i < NFILES; ++i) fref(new_proc->p_files[i]);
+  for (int i = 0; i < NFILES; ++i) {
+    if (new_proc->p_files[i]) fref(new_proc->p_files[i]);
+  }
   vref(curproc->p_cwd);
 
   // Set up shadow objects for private objects
+  dbg(DBG_FORK, "\n");
   vmarea_t *vma;
   vmarea_t *vma2;
   list_link_t *link;
@@ -90,23 +95,26 @@ int do_fork(struct regs *regs) {
   }
   
   // Unmap pages and flush caches
+  dbg(DBG_FORK, "\n");
   pt_unmap_range(curproc->p_pagedir, USER_MEM_LOW, USER_MEM_HIGH);
   tlb_flush_all();
 
   // Set up new thread context
+  dbg(DBG_FORK, "\n");
   kthread_t *new_thr = kthread_clone(curthr); 
   KASSERT(new_thr);
   list_insert_tail(&new_proc->p_threads, &new_thr->kt_plink);
   new_thr->kt_proc = new_proc;
 
   new_thr->kt_ctx.c_eip = (uint32_t)&userland_entry;
+  regs->r_eax = 0; // TODO: check this
   new_thr->kt_ctx.c_esp = fork_setup_stack(regs, new_thr->kt_kstack);
   new_thr->kt_ctx.c_pdptr = new_proc->p_pagedir;
-
   new_thr->kt_ctx.c_kstack = (uintptr_t)new_thr->kt_kstack + DEFAULT_STACK_SIZE;
   new_thr->kt_ctx.c_kstacksz = DEFAULT_STACK_SIZE;
 
+  dbg(DBG_FORK, "\n");
   sched_make_runnable(new_thr);
 
-  return 0;
+  return new_proc->p_pid;
 }

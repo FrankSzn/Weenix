@@ -64,7 +64,7 @@ int do_read(int fd, void *buf, size_t nbytes) {
  *        fd is not a valid file descriptor or is not open for writing.
  */
 int do_write(int fd, const void *buf, size_t nbytes) {
-  dbg(DBG_VFS, "fd: %d n: %d\n", fd, nbytes);
+  dbg(DBG_VFS, "fd: %d n: %d buf: %.*s\n", fd, nbytes, nbytes, buf);
   file_t *f = fget(fd);
   if (!f || !(f->f_mode & FMODE_WRITE)) {
     if (f) fput(f);
@@ -446,7 +446,7 @@ int do_chdir(const char *path) {
  *        File descriptor does not refer to a directory.
  */
 int do_getdent(int fd, struct dirent *dirp) {
-  dbg(DBG_VFS, "\n");
+  //dbg(DBG_VFS, "\n");
   if (fd == -1) return -EBADF;
   file_t *f = fget(fd);
   if (!f) return -EBADF;
@@ -458,6 +458,7 @@ int do_getdent(int fd, struct dirent *dirp) {
   if (result > 0) {
     f->f_pos += result;
     result = sizeof(dirent_t);
+    dbg(DBG_VFS, "%s\n", dirp->d_name);
   }
   fput(f);
   return result;

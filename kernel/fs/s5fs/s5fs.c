@@ -666,6 +666,7 @@ static int s5fs_readdir(vnode_t *vnode, off_t offset, struct dirent *d) {
   kmutex_lock(&vnode->vn_mutex);
   s5_dirent_t dirent;
   int nread = s5_read_file(vnode, offset, (char *)&dirent, sizeof(s5_dirent_t));
+  dbg(DBG_S5FS, "nread: %d\n", nread);
   KASSERT(nread == sizeof(s5_dirent_t) || nread == 0);
   kmutex_unlock(&vnode->vn_mutex);
   d->d_off = 0;

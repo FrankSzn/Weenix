@@ -53,6 +53,7 @@ init_func(syscall_init);
  *    set curthr->kt_errno and return -1
  */
 static int sys_read(read_args_t *arg) {
+  dbg(DBG_SYSCALL, "\n");
   read_args_t kern_args;
   int err;
   int nread;
@@ -80,6 +81,7 @@ static int sys_read(read_args_t *arg) {
  * This function is almost identical to sys_read.  See comments above.
  */
 static int sys_write(write_args_t *arg) {
+  dbg(DBG_SYSCALL, "\n");
   write_args_t kern_args;
   int err;
   if ((err = copy_from_user(&kern_args, arg, sizeof(write_args_t))) < 0) {
@@ -111,6 +113,7 @@ static int sys_write(write_args_t *arg) {
  * a max of something like count / sizeof(dirent_t) times.
  */
 static int sys_getdents(getdents_args_t *arg) {
+  dbg(DBG_SYSCALL, "\n");
   getdents_args_t kern_args;
   int err;
   if ((err = copy_from_user(&kern_args, arg, sizeof(getdents_args_t))) < 0) {
@@ -124,13 +127,15 @@ static int sys_getdents(getdents_args_t *arg) {
       curthr->kt_errno = err;
       return -1;
     }
-    if ((err = copy_to_user(arg->dirp + nread * sizeof(dirent_t), 
+    int status;
+    if ((status = copy_to_user(arg->dirp + nread * sizeof(dirent_t), 
             &dirent, sizeof(dirent_t))) < 0) {
-      curthr->kt_errno = -err;
+      curthr->kt_errno = -status;
       return -1;
     }
-    if (err == 0) // End of directory
+    if (err == 0) {// End of directory
       return 0;
+    }
     KASSERT(err == sizeof(dirent_t));
   }
   return nread;

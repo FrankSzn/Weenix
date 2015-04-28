@@ -158,6 +158,7 @@ kthread_t *kthread_clone(kthread_t *thr) {
   KASSERT(new_kt->kt_kstack);
   list_link_init(&new_kt->kt_qlink);
   list_link_init(&new_kt->kt_plink);
+  new_kt->kt_state = KT_NO_STATE;
   return new_kt;
 }
 
