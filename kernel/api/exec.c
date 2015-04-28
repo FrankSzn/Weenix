@@ -34,6 +34,7 @@ void userland_entry(const regs_t *regs) {
 
 int do_execve(const char *filename, char *const *argv, char *const *envp,
               struct regs *regs) {
+  dbg(DBG_EXEC, "\n");
   uint32_t eip, esp;
   int ret = binfmt_load(filename, argv, envp, &eip, &esp);
   if (ret < 0) {

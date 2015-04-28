@@ -85,13 +85,13 @@ int sched_queue_empty(ktqueue_t *q) { return list_empty(&q->tq_list); }
  * Use the private queue manipulation functions above.
  */
 void sched_sleep_on(ktqueue_t *q) {
-  dbg(DBG_PROC, "thread %s going to sleep\n", curproc->p_comm);
+  dbg(DBG_PROC, "thread %d going to sleep\n", curproc->p_pid);
   KASSERT(curthr->kt_state == KT_RUN);
   KASSERT(!curthr->kt_wchan);
   curthr->kt_state = KT_SLEEP;
   ktqueue_enqueue(q, curthr);
   sched_switch();
-  dbg(DBG_PROC, "thread %s woke up\n", curproc->p_comm);
+  dbg(DBG_PROC, "thread %d woke up\n", curproc->p_pid);
   KASSERT(!curthr->kt_wchan);
   // TODO: what behavior when canceled?
   if (curthr->kt_cancelled)

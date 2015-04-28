@@ -33,29 +33,40 @@
  */
 int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
             void **ret) {
-  if (!PAGE_ALIGNED(addr) || !PAGE_ALIGNED(len) || !PAGE_ALIGNED(off) || !len)
-      return -EINVAL;
-  if (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)
+  dbg(DBG_VM, "addr: %p\n", addr);
+  if (!PAGE_ALIGNED(addr) || !PAGE_ALIGNED(len) || !PAGE_ALIGNED(off) || !len) {
+    dbg(DBG_VM, "error\n");
     return -EINVAL;
+  }
+  if (addr && (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)) {
+    dbg(DBG_VM, "error\n");
+    return -EINVAL;
+  }
   if (((flags & MAP_PRIVATE) && (flags & MAP_SHARED)) || 
-      (!(flags & MAP_PRIVATE) && !(flags & MAP_SHARED)))
+      (!(flags & MAP_PRIVATE) && !(flags & MAP_SHARED))) {
+    dbg(DBG_VM, "error\n");
     return -EINVAL;
+  }
   // Set up file
   file_t *file;
   if (flags & MAP_ANON) {
     file = NULL;
   } else {
     file = fget(fd);
-    if (!file)
+    if (!file) {
+      dbg(DBG_VM, "error\n");
       return -EBADF;
-    if (!S_ISREG(file->f_vnode->vn_mode)) {
-      fput(file);
-      return -EACCES;
     }
+    //if (!S_ISREG(file->f_vnode->vn_mode)) {
+    //  dbg(DBG_VM, "error\n");
+    //  fput(file);
+    //  return -EACCES;
+    //}
     if (!(file->f_mode & FMODE_READ) ||
         ((flags & MAP_SHARED) && (prot & PROT_WRITE) && 
          !(file->f_mode & FMODE_WRITE)) ||
         ((prot & PROT_WRITE) && (file->f_mode == FMODE_APPEND))) {
+      dbg(DBG_VM, "error\n");
       fput(file);
       return -EACCES;
     }
