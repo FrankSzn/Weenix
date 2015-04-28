@@ -102,8 +102,11 @@ static inline void mmobj_init(mmobj_t *o, mmobj_ops_t *ops) {
   (o)->mmo_shadowed = NULL;
 }
 
-#define mmobj_bottom_obj(o)                                                    \
-  ((mmobj_t *)(NULL == (o)->mmo_shadowed) ? (o) : ((o)->mmo_un.mmo_bottom_obj))
+static inline mmobj_t* mmobj_bottom_obj(mmobj_t *o) {
+  return (NULL == o->mmo_shadowed) ? o : 
+    o->mmo_un.mmo_bottom_obj;
+}
 
-#define mmobj_bottom_vmas(o)                                                   \
-  ((list_t *)(&(mmobj_bottom_obj(o))->mmo_un.mmo_vmas))
+static inline list_t* mmobj_bottom_vmas(mmobj_t *o) {
+  return &(mmobj_bottom_obj(o))->mmo_un.mmo_vmas;
+}

@@ -40,6 +40,8 @@ vmarea_t *vmarea_alloc(void) {
   vmarea_t *newvma = (vmarea_t *)slab_obj_alloc(vmarea_allocator);
   if (newvma) {
     newvma->vma_vmmap = NULL;
+    list_link_init(&newvma->vma_olink);
+    list_link_init(&newvma->vma_plink);
   }
   return newvma;
 }
@@ -80,11 +82,11 @@ void vmmap_destroy(vmmap_t *map) {
  * of VM areas, and adding it. Don't forget to set the vma_vmmap for the
  * area. */
 void vmmap_insert(vmmap_t *map, vmarea_t *newvma) {
-  dbg(DBG_VMMAP, "map: %p start: %p\n", map, newvma->vma_start * PAGE_SIZE);
+  dbg(DBG_VMMAP, "map: %p start: %p\n", map, (void *)(newvma->vma_start * PAGE_SIZE));
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (newvma->vma_start < vma->vma_start) {
-      dbg(DBG_VMMAP, "inserting before: %p\n", vma->vma_start * PAGE_SIZE);
+      dbg(DBG_VMMAP, "inserting before: %p\n", (void *)(vma->vma_start * PAGE_SIZE));
       list_insert_before(&vma->vma_plink, &newvma->vma_plink);
       goto end;
     }
@@ -195,7 +197,7 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
  */
 int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
               int prot, int flags, off_t off, int dir, vmarea_t **new) {
-  dbg(DBG_VMMAP, "lopage: 0x%p npages: %d\n", lopage, npages);
+  dbg(DBG_VMMAP, "lopage: 0x%p npages: %d\n", (void *)lopage, npages);
   if (file) dbg(DBG_VMMAP, "vno: %d\n", file->vn_vno);
   // Validate input
   KASSERT(flags & MAP_PRIVATE || flags & MAP_SHARED);
@@ -221,8 +223,6 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   new_area = vmarea_alloc();
   KASSERT(new_area);
   new_area->vma_prot = prot;
-  list_init(&new_area->vma_plink);
-  list_init(&new_area->vma_olink);
   new_area->vma_start = lopage;
   new_area->vma_end = lopage + npages;
   new_area->vma_off = off;
@@ -230,11 +230,17 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
 
   if (file) {
     if (flags & MAP_PRIVATE) { // Private mapping (shadow object)
-      new_area->vma_obj = shadow_create();
-      KASSERT(new_area->vma_obj);
-      dbg(DBG_VMMAP, "allocated shadow object: 0x%p\n", new_area->vma_obj);
-      file->vn_ops->mmap(file, new_area, &new_area->vma_obj->mmo_shadowed);
-    } else {
+      mmobj_t *shadow_obj = shadow_create();
+      dbg(DBG_VMMAP, "allocated shadow object: 0x%p\n", shadow_obj);
+      KASSERT(shadow_obj);
+      new_area->vma_obj = shadow_obj;
+      mmobj_t *file_obj;
+      file->vn_ops->mmap(file, new_area, &file_obj);
+      shadow_obj->mmo_shadowed = file_obj;
+      shadow_obj->mmo_un.mmo_bottom_obj = file_obj; // link to bottom
+      // link on areas of the object
+      list_insert_tail(&file_obj->mmo_un.mmo_vmas, &new_area->vma_olink);
+    } else { // Not a shadow object
       file->vn_ops->mmap(file, new_area, &new_area->vma_obj);
     }
   } else { // No file (anonymous)
@@ -254,8 +260,8 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   if (new) *new = new_area;
 
   char out[1024];
-  vmmap_mapping_info(map, &out, 1024);
-  dbg(DBG_VM, "\n%.*s\n", 1024, &out);
+  vmmap_mapping_info(map, (char *)&out, 1024);
+  dbg(DBG_VM, "\n%.*s\n", 1024, (char *)&out);
 
   return 0;
 }
@@ -291,7 +297,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
  */
 int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
   uint32_t highpage = lopage + npages;
-  dbg(DBG_VMMAP, "0x%p - 0x%p\n", lopage*PAGE_SIZE, highpage*PAGE_SIZE);
+  dbg(DBG_VMMAP, "0x%p - 0x%p\n", (void *)(lopage*PAGE_SIZE), (void *)(highpage*PAGE_SIZE));
   KASSERT(npages);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
@@ -356,7 +362,7 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
   int ndone_total = 0;
   while (count) {
     // Find the page
-    uint32_t pagenum = ADDR_TO_PN(vaddr + ndone_total);
+    uint32_t pagenum = ADDR_TO_PN((char *)vaddr + ndone_total);
     vmarea_t *vma = vmmap_lookup(map, pagenum);
     KASSERT(vma);
     pframe_t *pframe;
@@ -364,15 +370,15 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
         write, &pframe);
     KASSERT(pframe && pframe->pf_addr);
 
-    size_t offset = PAGE_OFFSET(vaddr + ndone_total);
+    size_t offset = PAGE_OFFSET((char *)vaddr + ndone_total);
     size_t ndone = MIN(count, PAGE_SIZE - offset);
 
     // Do the operation on this page
     if (write) {
       pframe_dirty(pframe);
-      memcpy(pframe->pf_addr + offset, buf + ndone_total, ndone);
+      memcpy((char *)pframe->pf_addr + offset, (char *)buf + ndone_total, ndone);
     } else {
-      memcpy(buf + ndone_total, pframe->pf_addr + offset, ndone);
+      memcpy((char *)buf + ndone_total, (char *)pframe->pf_addr + offset, ndone);
     }
     // Update counters
     count -= ndone;
@@ -455,7 +461,7 @@ end:
 
 void print_mapping_info(vmmap_t *map) {
   char buf[2048];
-  int out = vmmap_mapping_info(map, &buf, 2048);
+  int out = vmmap_mapping_info(map, (char *)&buf, 2048);
   buf[out] = '\0';
-  dbg(DBG_VMMAP, "\n%.*s\n", 2048, &buf);
+  dbg(DBG_VMMAP, "\n%.*s\n", 2048, (char *)&buf);
 }
