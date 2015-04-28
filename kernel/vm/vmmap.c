@@ -134,13 +134,13 @@ int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
  * return NULL. */
 // CONVENTION: page number, not address
 vmarea_t *vmmap_lookup(vmmap_t *map, uint32_t vfn) {
-  dbg(DBG_VMMAP, "map: 0x%p vaddr: 0x%p\n", map, vfn*PAGE_SIZE);
+  //dbg(DBG_VMMAP, "map: 0x%p vaddr: 0x%p\n", map, vfn*PAGE_SIZE);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
     if (vma->vma_start <= vfn && vfn < vma->vma_end)
       return vma;
   } list_iterate_end();
-  dbg(DBG_VMMAP, "not found!\n");
+  //dbg(DBG_VMMAP, "not found!\n");
   return NULL;
 }
 
@@ -331,12 +331,16 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
  * given range, 0 otherwise.
  */
 int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
-  dbg(DBG_VMMAP, "startvfn: %d npages: %d\n", startvfn, npages);
+  //dbg(DBG_VMMAP, "startvfn: %d npages: %d\n", startvfn, npages);
   uint32_t endvfn = startvfn + npages;
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+    /* Cases:
+     * range contains either end of vma
+     * vma contains either end of range */
     if ((startvfn <= vma->vma_start && vma->vma_start < endvfn) || 
-        (startvfn < vma->vma_end && vma->vma_end <= endvfn))
+        (startvfn < vma->vma_end && vma->vma_end <= endvfn) ||
+        (vma->vma_start <= startvfn && startvfn < vma->vma_end))
       return 0;
   } list_iterate_end();
   return 1;
@@ -353,7 +357,8 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
     vmarea_t *vma = vmmap_lookup(map, pagenum);
     KASSERT(vma);
     pframe_t *pframe;
-    pframe_get(vma->vma_obj, pagenum - vma->vma_start + vma->vma_off, &pframe);
+    pframe_lookup(vma->vma_obj, pagenum - vma->vma_start + vma->vma_off, 
+        write, &pframe);
     KASSERT(pframe && pframe->pf_addr);
 
     size_t offset = PAGE_OFFSET(vaddr + ndone_total);
@@ -370,7 +375,7 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
     count -= ndone;
     ndone_total += ndone;
   }
-  dbg(DBG_VMMAP, "did %d bytes\n", ndone_total);
+  //dbg(DBG_VMMAP, "did %d bytes\n", ndone_total);
   return 0;
 }
 

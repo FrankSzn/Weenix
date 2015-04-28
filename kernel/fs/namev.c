@@ -91,7 +91,7 @@ int dir_namev(const char *pathname, size_t *namelen, const char **name,
     int status = lookup(base, pathname+i, j, &result);
     vput(base);
     if (status) {
-      dbg(DBG_VFS, "lookup returned %d\n", status);
+      dbg(DBG_VFS, "lookup error %d\n", status);
       return status;
     }
     base = result;
@@ -104,7 +104,7 @@ int dir_namev(const char *pathname, size_t *namelen, const char **name,
   }
   if (namelen) *namelen = j;
   if (name) *name = pathname + i;
-  dbg(DBG_VFS, "%.*s, %d\n", *namelen, *name, *namelen);
+  //dbg(DBG_VFS, "%.*s, %d\n", *namelen, *name, *namelen);
   if (res_vnode) *res_vnode = base; // Set res_vnode if possible
   else vput(base);
   return 0;
@@ -133,7 +133,7 @@ int open_namev(const char *pathname, int flag, vnode_t **res_vnode,
 
   // Perform lookup
   vnode_t *result = NULL;
-  dbg(DBG_VFS, "looking for '%.*s' in directory 0x%p\n", namelen, name, dir);
+  //dbg(DBG_VFS, "looking for '%.*s' in directory 0x%p\n", namelen, name, dir);
   status = lookup(dir, name, namelen, &result);
   if (status && status != -ENOENT) {
     dbg(DBG_VFS, "lookup error: %d\n", status);

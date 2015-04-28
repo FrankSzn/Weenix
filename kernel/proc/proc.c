@@ -278,6 +278,7 @@ void proc_thread_exited(void *retval) {
  * Options other than 0 are not supported.
  */
 pid_t do_waitpid(pid_t pid, int options, int *status) {
+  dbg(DBG_PROC, "pid: %d\n", pid);
   KASSERT(!options);
   KASSERT(pid >= -1);
   // Error if no children

@@ -78,7 +78,7 @@ file_t *fget(int fd) {
  * - If f_count == 0, call release (if available), vput() and free it. */
 void fput(file_t *f) {
   if (f->f_vnode && f->f_vnode->vn_vno)
-    dbg(DBG_VFS, "ino %d\n", f->f_vnode->vn_vno);
+    dbg(DBG_FREF, "ino %d\n", f->f_vnode->vn_vno);
   KASSERT(f);
   KASSERT(f->f_mode >= 0 && f->f_mode < 8);
   KASSERT(f->f_pos >= -1);

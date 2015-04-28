@@ -49,11 +49,11 @@
  *              can be found in pagefault.h
  */
 void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
-  dbg(DBG_VM, "vaddr: %p cause: %d\n", vaddr, cause);
+  dbg(DBG_VM, "vaddr: 0x%p cause: %d\n", vaddr, cause);
   KASSERT(cause & FAULT_USER);
-  char out[1024];
-  vmmap_mapping_info(curproc->p_vmmap, &out, 1024);
-  dbg(DBG_VM, "\n%.*s\n", 1024, &out);
+  //char out[1024];
+  //vmmap_mapping_info(curproc->p_vmmap, &out, 1024);
+  //dbg(DBG_VM, "\n%.*s\n", 1024, &out);
   uint32_t pn = ADDR_TO_PN(vaddr);
   vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, pn);
   if (!vma) { // Page not mapped

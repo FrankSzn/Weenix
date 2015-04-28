@@ -64,7 +64,7 @@ int do_read(int fd, void *buf, size_t nbytes) {
  *        fd is not a valid file descriptor or is not open for writing.
  */
 int do_write(int fd, const void *buf, size_t nbytes) {
-  dbg(DBG_VFS, "\n");
+  dbg(DBG_VFS, "fd: %d n: %d\n", fd, nbytes);
   file_t *f = fget(fd);
   if (!f || !(f->f_mode & FMODE_WRITE)) {
     if (f) fput(f);
@@ -87,10 +87,13 @@ int do_write(int fd, const void *buf, size_t nbytes) {
  *        fd isn't a valid open file descriptor.
  */
 int do_close(int fd) {
-  dbg(DBG_VFS, "\n");
+  dbg(DBG_VFS, "fd: %d\n", fd);
   if (fd < 0 || fd >= NFILES) return -EBADF;
   file_t *f = curproc->p_files[fd];
-  if (!f) return -EBADF;
+  if (!f) {
+    dbg(DBG_VFS, "bad fd\n");
+    return -EBADF;
+  }
   curproc->p_files[fd] = NULL;
   fput(f);
   return 0;
@@ -113,7 +116,7 @@ int do_close(int fd) {
  *        and tried to open a new one.
  */
 int do_dup(int fd) {
-  dbg(DBG_VFS, "\n");
+  dbg(DBG_VFS, "fd: %d\n", fd);
   if (fd == -1) return -EBADF;
   file_t *f = fget(fd);
   if (!f) return -EBADF;

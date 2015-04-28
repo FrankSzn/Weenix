@@ -194,7 +194,7 @@ static void *idleproc_run(int arg1, void *arg2) {
   dbg(DBG_INIT, "waiting on init\n");
   pid_t child = do_waitpid(-1, 0, &status);
   KASSERT(PID_INIT == child);
-  //KASSERT(0);
+  KASSERT(0);
 
 #ifdef __MTP__
   kthread_reapd_shutdown();
@@ -277,7 +277,9 @@ static void *initproc_run(int arg1, void *arg2) {
 
   char *newargv[] = { NULL, "hello", "world", NULL };
   char *newenviron[] = { NULL };
-  kernel_execve("/usr/bin/segfault", newargv, newenviron);
+  kernel_execve("/sbin/init", newargv, newenviron);
+
+  return NULL;
 
   kshell_add_command("procs", &test_procs, "test procs");
   kshell_add_command("drivers", &test_drivers, "test drivers");
