@@ -195,7 +195,6 @@ static void *idleproc_run(int arg1, void *arg2) {
   dbg(DBG_INIT, "waiting on init\n");
   pid_t child = do_waitpid(-1, 0, &status);
   KASSERT(PID_INIT == child);
-  KASSERT(0);
 
 #ifdef __MTP__
   kthread_reapd_shutdown();

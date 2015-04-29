@@ -65,11 +65,17 @@ int do_brk(void *addr, void **ret) {
   }
   vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, ADDR_TO_PN(curproc->p_brk));
   KASSERT(vma);
-  uint32_t lopage = vma->vma_start;
-  uint32_t highpage = ADDR_TO_PN(PAGE_ALIGN_UP(addr));
-  vmmap_map(curproc->p_vmmap, NULL, lopage, highpage - lopage, 
-      PROT_READ | PROT_WRITE, MAP_PRIVATE, 0, VMMAP_DIR_LOHI, &vma);
-  KASSERT(vma);
+  uint32_t highpage = MAX(ADDR_TO_PN(PAGE_ALIGN_UP(addr)) + 1,
+      vma->vma_end);
+  if (highpage > USER_MEM_HIGH) {
+    dbg(DBG_BRK, "can't exceed MEM_HIGH\n");
+    return -ENOMEM;
+  }
+  if (vmmap_lookup(curproc->p_vmmap, highpage)) {
+    dbg(DBG_BRK, "another vma is in the way\n");
+    return -ENOMEM;
+  }
+  vma->vma_end = highpage;
   curproc->p_brk = addr;
 
   if (ret) *ret = addr;

@@ -263,11 +263,9 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
 
   vmmap_insert(map, new_area);
 
-  if (new) *new = new_area;
+  dbginfo(DBG_VMMAP, vmmap_mapping_info, curproc->p_vmmap);
 
-  char out[1024];
-  vmmap_mapping_info(map, (char *)&out, 1024);
-  dbg(DBG_VM, "\n%.*s\n", 1024, (char *)&out);
+  if (new) *new = new_area;
 
   return 0;
 }
