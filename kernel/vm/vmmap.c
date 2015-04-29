@@ -112,21 +112,26 @@ int vmmap_find_range(vmmap_t *map, uint32_t npages, int dir) {
   vmarea_t *vma;
   // Walk the list, checking if there is enough space between regions
   if (dir == VMMAP_DIR_LOHI) { // Low as possible
-    size_t low = USER_MEM_LOW;
+    size_t low = ADDR_TO_PN(USER_MEM_LOW);
     list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
       size_t high = vma->vma_start; 
       if ((high - low) >= npages)
         return low;
       low = vma->vma_end;
     } list_iterate_end();
+    if ((ADDR_TO_PN(USER_MEM_HIGH) - low) >= npages)
+      return low;
   } else { // High as possible
-    size_t high = USER_MEM_HIGH;
+    size_t high = ADDR_TO_PN(USER_MEM_HIGH);
     list_iterate_reverse(&map->vmm_list, vma, vmarea_t, vma_plink) {
       size_t low = vma->vma_end;
-      if ((high - low) >= npages)
+      if ((high - low) >= npages) {
         return high - npages;
+      }
       high = vma->vma_start;
     } list_iterate_end();
+    if ((high - ADDR_TO_PN(USER_MEM_LOW)) >= npages)
+      return high - npages;
   }
   dbg(DBG_VMMAP, "no region large enough!\n");
   return -1;
@@ -211,8 +216,10 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   int unmap = 0;
   if (!lopage) { // Find a region big enough
     int status = vmmap_find_range(map, npages, dir);
-    if (status < 0)
+    if (status == -1) {
+      dbg(DBG_VMMAP, "error\n");
       return -ENOMEM; 
+    }
     lopage = status;
     KASSERT(vmmap_lookup(map, lopage) == NULL);
   } else { // Unmap overlapping area if one exists
@@ -460,8 +467,8 @@ end:
 }
 
 void print_mapping_info(vmmap_t *map) {
-  char buf[2048];
-  int out = vmmap_mapping_info(map, (char *)&buf, 2048);
+  char buf[1024];
+  int out = vmmap_mapping_info(map, (char *)&buf, 1024);
   buf[out] = '\0';
-  dbg(DBG_VMMAP, "\n%.*s\n", 2048, (char *)&buf);
+  dbg(DBG_VMMAP, "\n%.*s\n", 1024, (char *)&buf);
 }

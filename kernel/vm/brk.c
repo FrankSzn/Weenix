@@ -53,12 +53,17 @@
  * Return 0 on success, -errno on failure.
  */
 int do_brk(void *addr, void **ret) {
-  NOT_YET_IMPLEMENTED("VM: do_brk");
-  if (!addr)
-    return (int)curproc->p_brk;
-  if (addr < curproc->p_start_brk)
+  dbg(DBG_BRK, "addr: 0x%p curr: 0x%p start: 0x%p\n", 
+      addr, curproc->p_brk, curproc->p_start_brk);
+  if (!addr) {
+    *ret = curproc->p_brk;
+    return 0;
+  }
+  if (addr < curproc->p_start_brk) {
+    dbg(DBG_BRK, "can't shorten brk!\n");
     return -ENOMEM;
-  vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, curproc->p_brk);
+  }
+  vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, ADDR_TO_PN(curproc->p_brk));
   KASSERT(vma);
   uint32_t lopage = vma->vma_start;
   uint32_t highpage = ADDR_TO_PN(PAGE_ALIGN_UP(addr));
@@ -66,5 +71,7 @@ int do_brk(void *addr, void **ret) {
       PROT_READ | PROT_WRITE, MAP_PRIVATE, 0, VMMAP_DIR_LOHI, &vma);
   KASSERT(vma);
   curproc->p_brk = addr;
+
+  if (ret) *ret = addr;
   return 0;
 }

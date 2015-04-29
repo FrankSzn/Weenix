@@ -122,7 +122,7 @@ int do_fork(struct regs *regs) {
   new_thr->kt_ctx.c_kstack = (uintptr_t)new_thr->kt_kstack + DEFAULT_STACK_SIZE;
   new_thr->kt_ctx.c_kstacksz = DEFAULT_STACK_SIZE;
 
-  dbg(DBG_FORK, "\n");
+  dbg(DBG_FORK, "new proc: %d\n", new_proc->p_pid);
   sched_make_runnable(new_thr);
 
   return new_proc->p_pid;
