@@ -242,6 +242,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
       new_area->vma_obj = shadow_obj;
       mmobj_t *file_obj;
       file->vn_ops->mmap(file, new_area, &file_obj);
+      KASSERT(file_obj);
       shadow_obj->mmo_shadowed = file_obj;
       shadow_obj->mmo_un.mmo_bottom_obj = file_obj; // link to bottom
       // link on areas of the object

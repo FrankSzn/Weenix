@@ -57,11 +57,6 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
       dbg(DBG_VM, "error\n");
       return -EBADF;
     }
-    //if (!S_ISREG(file->f_vnode->vn_mode)) {
-    //  dbg(DBG_VM, "error\n");
-    //  fput(file);
-    //  return -EACCES;
-    //}
     if (!(file->f_mode & FMODE_READ) ||
         ((flags & MAP_SHARED) && (prot & PROT_WRITE) && 
          !(file->f_mode & FMODE_WRITE)) ||

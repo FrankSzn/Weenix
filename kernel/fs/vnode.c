@@ -100,12 +100,12 @@ void vref(vnode_t *vn) {
   KASSERT(vn);
   KASSERT(0 < vn->vn_refcount);
   vn->vn_refcount++;
-  dbg(DBG_VNREF, "vref: 0x%p, 0x%p ino %ld up to %d, nrespages=%d\n", vn,
+  dbg(DBG_VNREF, "vref: 0x%p, 0x%p vno %ld up to %d, nrespages=%d\n", vn,
       vn->vn_fs, (long)vn->vn_vno, vn->vn_refcount, vn->vn_nrespages);
 }
 
 vnode_t *vget(struct fs *fs, ino_t vno) {
-  dbg(DBG_VNREF, "ino %d\n", vno);
+  dbg(DBG_VNREF, "vno %d\n", vno);
   vnode_t *vn = NULL;
 
   KASSERT(fs);
@@ -121,7 +121,7 @@ find:
          * doing this. */
 
         dbg(DBG_VNREF,
-            "vget: wow, found vnode busy (0x%p, 0x%p ino %ld refcount %d)\n",
+            "vget: wow, found vnode busy (0x%p, 0x%p vno %ld refcount %d)\n",
             vn, vn->vn_fs, (long)vn->vn_vno, vn->vn_refcount);
 
         sched_sleep_on(&vn->vn_waitq);
@@ -229,7 +229,7 @@ void vput(struct vnode *vn) {
 
   KASSERT(!(VN_BUSY & vn->vn_flags));
 
-  dbg(DBG_VNREF, "vput: 0x%p, 0x%p ino %ld, down to %d, nrespages = %d\n", vn,
+  dbg(DBG_VNREF, "vput: 0x%p, 0x%p vno %ld, down to %d, nrespages = %d\n", vn,
       vn->vn_fs, (long)vn->vn_vno, vn->vn_refcount - 1, vn->vn_nrespages);
 
   if ((vn->vn_nrespages == (vn->vn_refcount - 1)) &&
@@ -281,7 +281,7 @@ void vput(struct vnode *vn) {
 #ifndef NDEBUG
   if (!sched_queue_empty(&vn->vn_waitq)) {
     dbg(DBG_VNREF, "vput: wow, found thread(s) trying to vget "
-                   "(%p, %p ino %ld) after returning from delete_vnode.\n",
+                   "(%p, %p vno %ld) after returning from delete_vnode.\n",
         vn, vn->vn_fs, (long)vn->vn_vno);
   }
 #endif

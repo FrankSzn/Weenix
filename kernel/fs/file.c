@@ -37,7 +37,7 @@ void fref(file_t *f) {
   f->f_refcount++;
 
   if (f->f_vnode) {
-    dbg(DBG_FREF, "fref: 0x%p, 0x%p ino %lu, up to %d\n", f, f->f_vnode->vn_fs,
+    dbg(DBG_FREF, "fref: 0x%p, 0x%p vno %lu, up to %d\n", f, f->f_vnode->vn_fs,
         (unsigned long)f->f_vnode->vn_vno, f->f_refcount);
   } else {
     dbg(DBG_FREF, "fref: 0x%p up to %d\n", f, f->f_refcount);
@@ -79,7 +79,7 @@ file_t *fget(int fd) {
  * - If f_count == 0, call release (if available), vput() and free it. */
 void fput(file_t *f) {
   if (f->f_vnode && f->f_vnode->vn_vno)
-    dbg(DBG_FREF, "ino %d\n", f->f_vnode->vn_vno);
+    dbg(DBG_FREF, "vno %d\n", f->f_vnode->vn_vno);
   KASSERT(f);
   KASSERT(f->f_mode >= 0 && f->f_mode < 8);
   KASSERT(f->f_pos >= -1);
@@ -90,7 +90,7 @@ void fput(file_t *f) {
   f->f_refcount--;
 
   if (f->f_vnode) {
-    dbg(DBG_FREF, "fput: 0x%p, 0x%p ino %lu, down to %d\n", f,
+    dbg(DBG_FREF, "fput: 0x%p, 0x%p vno %lu, down to %d\n", f,
         f->f_vnode->vn_fs, (unsigned long)f->f_vnode->vn_vno, f->f_refcount);
   } else {
     dbg(DBG_FREF, "fput: 0x%p down to %d\n", f, f->f_refcount);

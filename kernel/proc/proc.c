@@ -150,6 +150,7 @@ proc_t *proc_create(char *name) {
  * @param status the status to exit the process with
  */
 void proc_cleanup(int status) {
+  dbg(DBG_PROC, "proc %d\n", curproc->p_pid);
   // Set exit status
   curproc->p_status = status;
 

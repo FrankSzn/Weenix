@@ -95,8 +95,10 @@ static void shadow_put(mmobj_t *o) {
       pframe_free(pf);
     } list_iterate_end();
     KASSERT(0 == o->mmo_nrespages);
-    if (o->mmo_shadowed)
+    if (o->mmo_shadowed) {
+      dbg(DBG_VM, "putting %d\n",  o->mmo_shadowed;
       o->mmo_shadowed->mmo_ops->put(o->mmo_shadowed);
+    }
     slab_obj_free(shadow_allocator, o);
   }
 }
