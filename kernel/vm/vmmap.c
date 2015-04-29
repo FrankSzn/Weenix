@@ -69,7 +69,8 @@ void vmmap_destroy(vmmap_t *map) {
   KASSERT(map);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-    list_remove(&vma->vma_olink);
+    // TODO: what about this link?
+    //list_remove(&vma->vma_olink);
     list_remove(&vma->vma_plink);
     vma->vma_obj->mmo_ops->put(vma->vma_obj);
     vmarea_free(vma);
@@ -162,8 +163,6 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
     memcpy(new_vma, vma, sizeof(vmarea_t));
     new_vma->vma_vmmap = new_map;
     new_vma->vma_obj = NULL;
-    list_link_init(&new_vma->vma_olink);
-    list_link_init(&new_vma->vma_plink);
     vma->vma_obj->mmo_ops->ref(vma->vma_obj); // Incr. refcount
     list_insert_tail(&new_map->vmm_list, &new_vma->vma_plink);
   } list_iterate_end();
@@ -328,6 +327,7 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
       list_remove(&vma->vma_plink);
       list_remove(&vma->vma_olink);
       vma->vma_obj->mmo_ops->put(vma->vma_obj);
+      vmarea_free(vma); 
     }
   } list_iterate_end();
   KASSERT(!vmmap_lookup(map, lopage));

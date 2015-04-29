@@ -91,9 +91,11 @@ int do_fork(struct regs *regs) {
       KASSERT(shadow && shadow2);
       dbg(DBG_FORK, "shadowed 0x%p with 0x%p and 0x%p\n",
           vma->vma_obj, shadow, shadow2);
-      // TODO: bottom link and vmas
+      shadow->mmo_un.mmo_bottom_obj = mmobj_bottom_obj(vma->vma_obj);
+      shadow2->mmo_un.mmo_bottom_obj = mmobj_bottom_obj(vma->vma_obj);
       shadow->mmo_shadowed = vma->vma_obj;
       shadow2->mmo_shadowed = vma->vma_obj;
+      list_insert_tail(mmobj_bottom_vmas(vma->vma_obj), &vma2->vma_olink);
       vma->vma_obj = shadow;
       vma2->vma_obj = shadow2;
     }

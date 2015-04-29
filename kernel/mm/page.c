@@ -255,19 +255,15 @@ found:
              _pagegroup_calculate_index(group, order + 1, addr));
 
   dbg(DBG_MM, "allocating %d pages (addr 0x%x)\n", (1 << order), addr);
-  dbg(DBG_PFRAME, "\n");
 
 #ifdef MM_POISON
   /*
    * Wipe the pages with a special bit-pattern, so that
    * uninitialized memory accesses will be obvious.
    */
-  dbg(DBG_PFRAME, "%p %p\n", (void*)addr, &memset);
   memset((void *)addr, MM_POISON_ALLOC, (1 << order) << PAGE_SHIFT);
-  dbg(DBG_PFRAME, "\n");
 #endif /* MM_POISON */
 
-  dbg(DBG_PFRAME, "\n");
   page_freecount -= (1 << order);
   return (void *)addr;
 }

@@ -546,6 +546,7 @@ list_start:
  * their address space, and zero the corresponding address entry.
  */
 void pframe_remove_from_pts(pframe_t *pf) {
+  dbg(DBG_PFRAME, "\n");
   vmarea_t *vma;
   list_iterate_begin(mmobj_bottom_vmas(pf->pf_obj), vma, vmarea_t, vma_olink) {
     /* Get the virtual address in the area corresponding to this pf */
