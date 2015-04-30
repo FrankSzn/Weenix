@@ -69,10 +69,10 @@ void vmmap_destroy(vmmap_t *map) {
   KASSERT(map);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-    // TODO: what about this link?
-    //list_remove(&vma->vma_olink);
-    list_remove(&vma->vma_plink);
+    KASSERT(list_link_is_linked(&vma->vma_olink));
     vma->vma_obj->mmo_ops->put(vma->vma_obj);
+    list_remove(&vma->vma_olink);
+    list_remove(&vma->vma_plink);
     vmarea_free(vma);
   } list_iterate_end();
   slab_obj_free(vmmap_allocator, map);
