@@ -51,13 +51,13 @@
 void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   dbg(DBG_VM, "vaddr: 0x%p cause: %d pid: %d\n", vaddr, cause, curproc->p_pid);
   KASSERT(cause & FAULT_USER);
-  //char out[1024];
-  //vmmap_mapping_info(curproc->p_vmmap, &out, 1024);
-  //dbg(DBG_VM, "\n%.*s\n", 1024, &out);
+
+  dbginfo(DBG_VMMAP, vmmap_mapping_info, curproc->p_vmmap);
+
   uint32_t pn = ADDR_TO_PN(vaddr);
   vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, pn);
   if (!vma) { // Page not mapped
-    dbg(DBG_VM, "SEGFAULT!\n");
+    dbg(DBG_VM, "SEGFAULT! (missing)\n");
     proc_kill(curproc, EFAULT);
     return;
   }
@@ -66,7 +66,7 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   if (((cause & FAULT_WRITE) && !(PROT_WRITE & vma->vma_prot)) ||
       ((cause & FAULT_EXEC) && !(PROT_EXEC & vma->vma_prot)) ||
       (PROT_NONE & vma->vma_prot)) {
-    dbg(DBG_VM, "SEGFAULT!\n");
+    dbg(DBG_VM, "SEGFAULT! (permissions)\n");
   proc_kill(curproc, EFAULT);
   return;
   }

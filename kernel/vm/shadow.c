@@ -96,7 +96,7 @@ static void shadow_put(mmobj_t *o) {
     } list_iterate_end();
     KASSERT(0 == o->mmo_nrespages);
     if (o->mmo_shadowed) {
-      dbg(DBG_VM, "putting %d\n",  o->mmo_shadowed;
+      //dbg(DBG_VM, "putting %p\n",  o->mmo_shadowed);
       o->mmo_shadowed->mmo_ops->put(o->mmo_shadowed);
     }
     slab_obj_free(shadow_allocator, o);
@@ -123,7 +123,7 @@ static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
       if (o->mmo_shadowed) { // Shadow object
         *pf = pframe_get_resident(o, pagenum);
         if (*pf) { // Already resident
-          dbg(DBG_VM, "found resident\n", o);
+          dbg(DBG_VM, "found resident\n");
           while (pframe_is_busy(*pf)) { // Wait until not busy
             sched_cancellable_sleep_on(&(*pf)->pf_waitq);
             *pf = pframe_get_resident(o, pagenum);
@@ -160,7 +160,7 @@ static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
     if (o->mmo_shadowed) { // Shadow object
       page = pframe_get_resident(o, pf->pf_pagenum);
       if (page) { // Already resident
-        dbg(DBG_VM, "found resident\n", o);
+        dbg(DBG_VM, "found resident\n");
         while (pframe_is_busy(page)) { // Wait until not busy
           sched_cancellable_sleep_on(&(page)->pf_waitq);
           page = pframe_get_resident(o, pf->pf_pagenum);
