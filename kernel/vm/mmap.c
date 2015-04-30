@@ -34,8 +34,8 @@
 int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
             void **ret) {
   dbg(DBG_VM, "addr: %p\n", addr);
-  if (!PAGE_ALIGNED(addr) || !PAGE_ALIGNED(len) || !PAGE_ALIGNED(off) || !len) {
-    dbg(DBG_VM, "error\n");
+  if (!PAGE_ALIGNED(addr) || !PAGE_ALIGNED(off) || !len) {
+    dbg(DBG_VM, "error len: %d off: %d\n", len, off);
     return -EINVAL;
   }
   if (addr && (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)) {
@@ -69,7 +69,7 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
 
   vmarea_t *new_area;
   int status = vmmap_map(curproc->p_vmmap, file ? file->f_vnode : NULL, 
-      ADDR_TO_PN(addr), len / PAGE_SIZE, prot, 
+      ADDR_TO_PN(addr), len / PAGE_SIZE + 1, prot, 
       flags, off, VMMAP_DIR_HILO, &new_area);
   if (new_area)
     tlb_flush_range(PN_TO_ADDR(new_area->vma_start), len / PAGE_SIZE);
@@ -85,11 +85,12 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
  * Remember to clear the TLB.
  */
 int do_munmap(void *addr, size_t len) {
-  if (!PAGE_ALIGNED(addr) || !PAGE_ALIGNED(len) || !len)
+  if (!PAGE_ALIGNED(addr) || !len)
       return -EINVAL;
   if (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)
     return -EINVAL;
-  int status = vmmap_remove(curproc->p_vmmap, (uint32_t)addr, len / PAGE_SIZE);
-  tlb_flush_range((uint32_t)addr, len / PAGE_SIZE);
+  int npages = len / PAGE_SIZE + 1;
+  int status = vmmap_remove(curproc->p_vmmap, (uint32_t)addr, npages);
+  tlb_flush_range((uint32_t)addr, npages);
   return status;
 }
