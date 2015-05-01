@@ -60,6 +60,7 @@ int do_fork(struct regs *regs) {
   KASSERT(new_proc->p_pagedir);
   new_proc->p_brk = curproc->p_brk;
   new_proc->p_start_brk = curproc->p_start_brk;
+  vput(new_proc->p_cwd);
   new_proc->p_cwd = curproc->p_cwd;
   new_proc->p_vmmap = vmmap_clone(curproc->p_vmmap);
 

@@ -58,7 +58,7 @@ static int s5_alloc_block(s5fs_t *);
  * You probably want to use pframe_get, pframe_pin, pframe_unpin, pframe_dirty.
  */
 int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
-  dbg(DBG_S5FS, "vno: %d seekptr: %d\n", vnode->vn_vno, seekptr);
+  dbg(DBG_S5FS, "vno %d seekptr: %d\n", vnode->vn_vno, seekptr);
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(inode);
   KASSERT(curthr == vnode->vn_mutex.km_holder);
@@ -130,7 +130,7 @@ int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int
   KASSERT(seek >= 0);
   KASSERT(inode);
   KASSERT(curthr == vnode->vn_mutex.km_holder);
-  //dbg(DBG_S5FS, "vno: %d, seek: %d len: %d filelen: %d\n", vnode->vn_vno, 
+  //dbg(DBG_S5FS, "vno %d, seek: %d len: %d filelen: %d\n", vnode->vn_vno, 
   //    seek, len, inode->s5_size);
   pframe_t *pframe;
   size_t ndone_total = 0;
@@ -206,7 +206,7 @@ int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int
  * You will need pframe_dirty(), pframe_get(), memcpy().
  */
 int s5_write_file(vnode_t *vnode, off_t seek, const char *bytes, size_t len) {
-  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
+  dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
   return s5_file_op(vnode, seek, (char *)bytes, len, 1);
 }
 

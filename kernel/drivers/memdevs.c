@@ -96,5 +96,6 @@ static int zero_read(bytedev_t *dev, int offset, void *buf, int count) {
 
 static int zero_mmap(vnode_t *file, vmarea_t *vma, mmobj_t **ret) {
   *ret = anon_create();
+  vput(file);
   return 0;
 }

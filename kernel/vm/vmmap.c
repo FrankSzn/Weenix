@@ -201,7 +201,7 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
 int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
               int prot, int flags, off_t off, int dir, vmarea_t **new) {
   dbg(DBG_VMMAP, "lopage: 0x%p npages: %d\n", (void *)lopage, npages);
-  if (file) dbg(DBG_VMMAP, "vno: %d\n", file->vn_vno);
+  if (file) dbg(DBG_VMMAP, "vno %d\n", file->vn_vno);
   // Validate input
   KASSERT(flags & MAP_PRIVATE || flags & MAP_SHARED);
   KASSERT(PAGE_ALIGNED(off));

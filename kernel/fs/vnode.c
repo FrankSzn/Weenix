@@ -497,6 +497,7 @@ static void vo_vref(mmobj_t *o) {
 }
 
 static void vo_vput(mmobj_t *o) {
+  dbg(DBG_VM, "\n");
   KASSERT(o);
   vput(mmobj_to_vnode(o));
 }

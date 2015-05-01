@@ -206,7 +206,7 @@ int s5fs_mount(struct fs *fs) {
  *
  */
 static void s5fs_read_vnode(vnode_t *vnode) {
-  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
+  dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
   kmutex_lock(&vnode->vn_mutex);
   // Get page frame
   pframe_t *pframe;
@@ -248,7 +248,7 @@ static void s5fs_read_vnode(vnode_t *vnode) {
     vnode->vn_len = 0;
   else
     vnode->vn_len = inode->s5_size;
-  dbg(DBG_S5FS, "read vno: %d linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
+  dbg(DBG_S5FS, "read vno %d linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
   kmutex_unlock(&vnode->vn_mutex);
 }
 
@@ -261,7 +261,7 @@ static void s5fs_read_vnode(vnode_t *vnode) {
  * the inode, and don't forget to unpin the page
  */
 static void s5fs_delete_vnode(vnode_t *vnode) {
-  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
+  dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
   kmutex_lock(&vnode->vn_mutex);
   // Get page frame
   pframe_t *pframe;
@@ -277,7 +277,7 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
   pframe_unpin(pframe); // Unpin frame
   if (!inode->s5_linkcount)
     s5_free_inode(vnode);
-  dbg(DBG_S5FS, "vno: %d, linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
+  dbg(DBG_S5FS, "vno %d, linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
   kmutex_unlock(&vnode->vn_mutex);
 }
 
@@ -289,7 +289,7 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
  *
  */
 static int s5fs_query_vnode(vnode_t *vnode) {
-  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
+  dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
   kmutex_lock(&vnode->vn_mutex);
   // Get inode
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
@@ -405,7 +405,7 @@ static int s5fs_write(vnode_t *vnode, off_t offset, const void *buf,
  * Don't worry about this until VM.
  */
 static int s5fs_mmap(vnode_t *file, vmarea_t *vma, mmobj_t **ret) {
-  dbg(DBG_S5FS, "\n");
+  dbg(DBG_S5FS, "vno %d\n", file->vn_vno);
   vref(file);
   if (ret) *ret = &file->vn_mmobj;
   return 0;
@@ -686,7 +686,7 @@ static int s5fs_readdir(vnode_t *vnode, off_t offset, struct dirent *d) {
  * You probably want to use s5_inode_blocks().
  */
 static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
-  dbg(DBG_S5FS, "vno: %d\n", vnode->vn_vno);
+  dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(ss);
   kmutex_lock(&vnode->vn_mutex);
@@ -707,7 +707,7 @@ static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
  * read_block function.
  */
 static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
-  dbg(DBG_S5FS, "vno: %d offset: %d mmobj: %p\n", vnode->vn_vno, offset, &vnode->vn_mmobj);
+  dbg(DBG_S5FS, "vno %d offset: %d mmobj: %p\n", vnode->vn_vno, offset, &vnode->vn_mmobj);
   KASSERT(vnode);
   KASSERT(pagebuf);
   KASSERT(PAGE_ALIGNED(pagebuf));
@@ -750,7 +750,7 @@ static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
  * Much of this can be done with s5_seek_to_block()
  */
 static int s5fs_dirtypage(vnode_t *vnode, off_t offset) {
-  dbg(DBG_S5FS, "vno: %d offset: %d\n", vnode->vn_vno, offset);
+  dbg(DBG_S5FS, "vno %d offset: %d\n", vnode->vn_vno, offset);
   KASSERT(curthr == vnode->vn_mutex.km_holder);
   // Verify this is a sparse region
   int status = s5_seek_to_block(vnode, offset, 0);
@@ -771,7 +771,7 @@ static int s5fs_dirtypage(vnode_t *vnode, off_t offset) {
  * Like fillpage, but for writing.
  */
 static int s5fs_cleanpage(vnode_t *vnode, off_t offset, void *pagebuf) {
-  dbg(DBG_S5FS, "vno: %d offset: %d\n", vnode->vn_vno, offset);
+  dbg(DBG_S5FS, "vno %d offset: %d\n", vnode->vn_vno, offset);
   KASSERT(PAGE_ALIGNED(pagebuf));
   KASSERT(!vnode->vn_mutex.km_holder);
   kmutex_lock(&vnode->vn_mutex);
