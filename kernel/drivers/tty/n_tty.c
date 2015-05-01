@@ -163,20 +163,16 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
   n_tty_t *nt = ldisc_to_ntty(ldisc);
   dbg(DBG_TERM, "\n");
   
-  char *out_string = kmalloc(2);
-  KASSERT(out_string);
-  out_string[0] = c;
-  out_string[1] = '\0';
-  
   if (c == 0x08 || c == 0x7F) { // Backspace
     if (nt->rawtail != nt->ckdtail) {
       --nt->rawtail;
       *get_rawtail(nt) = '\0';
     } else {
-      out_string[0] = '\0';
+      char *out = kmalloc(1);
+      *out = 0;
       dbg(DBG_TERM, "Ignoring backspace\n");
+      return out;
     }
-    return out_string;
   } else if (nt->rawtail + 1 != nt->rhead) {
     *get_rawtail(nt) = c;
     ++(nt->rawtail);
@@ -186,7 +182,7 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
       sched_broadcast_on(&nt->rwaitq);
     }
   }
-  return out_string;
+  return n_tty_process_char(ldisc, c);
 }
 
 /*
@@ -195,14 +191,19 @@ const char *n_tty_receive_char(tty_ldisc_t *ldisc, char c) {
  * The only special case is '\r' and '\n'.
  */
 const char *n_tty_process_char(tty_ldisc_t *ldisc, char c) {
-  char *out_string = kmalloc(2);
+  char *out_string;
+  if (c == 0x08 || c == 0x7F) { // Backspace
+    out_string = kmalloc(4);
+    out_string[0] = 0x08;
+    out_string[1] = ' ';
+    out_string[2] = 0x08;
+    out_string[3] = '\0';
+  } else {
+    out_string = kmalloc(2);
+    out_string[0] = c;
+    out_string[1] = '\0';
+  }
   KASSERT(out_string);
-  out_string[1] = '\0';
-  // TODO: ask mentor about this "special case"
-  //if (c == '\r' || c == '\n')
-  //  out_string[0] = '\0';
-  //else
-  out_string[0] = c;
   return out_string;
 }
 
