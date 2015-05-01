@@ -94,12 +94,12 @@ struct mmobj_ops {
  * we intialize the mmo_vmas member of its union here
  */
 static inline void mmobj_init(mmobj_t *o, mmobj_ops_t *ops) {
-  (o)->mmo_ops = (ops);
-  (o)->mmo_refcount = 0;
-  (o)->mmo_nrespages = 0;
-  list_init(&(o)->mmo_respages);
-  list_init(&(o)->mmo_un.mmo_vmas);
-  (o)->mmo_shadowed = NULL;
+  o->mmo_ops = ops;
+  o->mmo_refcount = 0;
+  o->mmo_nrespages = 0;
+  list_init(&o->mmo_respages);
+  list_init(&o->mmo_un.mmo_vmas);
+  o->mmo_shadowed = NULL;
 }
 
 static inline mmobj_t* mmobj_bottom_obj(mmobj_t *o) {

@@ -24,8 +24,6 @@
 #include "mm/mman.h"
 #include "mm/mmobj.h"
 
-void print_mapping_info(vmmap_t *map);
-
 static slab_allocator_t *vmmap_allocator;
 static slab_allocator_t *vmarea_allocator;
 
@@ -69,6 +67,7 @@ void vmmap_destroy(vmmap_t *map) {
   KASSERT(map);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+    dbg(DBG_VMMAP, "0x%p %p\n", vma->vma_obj, vma->vma_obj->mmo_shadowed);
     KASSERT(list_link_is_linked(&vma->vma_olink));
     vma->vma_obj->mmo_ops->put(vma->vma_obj);
     list_remove(&vma->vma_olink);
@@ -245,8 +244,6 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
       KASSERT(file_obj);
       shadow_obj->mmo_shadowed = file_obj;
       shadow_obj->mmo_un.mmo_bottom_obj = file_obj; // link to bottom
-      // link on areas of the object
-      list_insert_tail(&file_obj->mmo_un.mmo_vmas, &new_area->vma_olink);
     } else { // Not a shadow object
       file->vn_ops->mmap(file, new_area, &new_area->vma_obj);
     }
@@ -254,6 +251,8 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
     new_area->vma_obj = anon_create();
   }
   KASSERT(new_area->vma_obj);
+  // Link to vmareas with the same bottom object
+  list_insert_tail(mmobj_bottom_vmas(new_area->vma_obj), &new_area->vma_olink);
 
   if (unmap) {
     vmarea_t *existing;
@@ -330,9 +329,9 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
       KASSERT(vma->vma_end - vma->vma_start);
     } else if (vma->vma_end <= highpage) { // Case 4
       dbg(DBG_VMMAP, "case 4\n");
+      vma->vma_obj->mmo_ops->put(vma->vma_obj);
       list_remove(&vma->vma_plink);
       list_remove(&vma->vma_olink);
-      vma->vma_obj->mmo_ops->put(vma->vma_obj);
       vmarea_free(vma); 
     }
   } list_iterate_end();
@@ -364,7 +363,6 @@ int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
 // Abstraction for reading and writing
 int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int write) {
   dbg(DBG_VMMAP, "vaddr: %p count: %d\n", vaddr, count);
-  //print_mapping_info(map);
   int ndone_total = 0;
   while (count) {
     // Find the page
@@ -463,11 +461,4 @@ end:
   }
   */
   return osize - size;
-}
-
-void print_mapping_info(vmmap_t *map) {
-  char buf[1024];
-  int out = vmmap_mapping_info(map, (char *)&buf, 1024);
-  buf[out] = '\0';
-  dbg(DBG_VMMAP, "\n%.*s\n", 1024, (char *)&buf);
 }

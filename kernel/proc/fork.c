@@ -90,17 +90,17 @@ int do_fork(struct regs *regs) {
       mmobj_t *shadow = shadow_create();
       mmobj_t *shadow2 = shadow_create();
       KASSERT(shadow && shadow2);
-      dbg(DBG_FORK, "shadowed 0x%p with 0x%p and 0x%p\n",
-          vma->vma_obj, shadow, shadow2);
       mmobj_t *bottom = mmobj_bottom_obj(vma->vma_obj);
       KASSERT(bottom && !bottom->mmo_shadowed);
       shadow->mmo_un.mmo_bottom_obj = bottom;
       shadow2->mmo_un.mmo_bottom_obj = bottom;
       shadow->mmo_shadowed = vma->vma_obj;
       shadow2->mmo_shadowed = vma->vma_obj;
-      list_insert_tail(mmobj_bottom_vmas(vma->vma_obj), &vma2->vma_olink);
       vma->vma_obj = shadow;
       vma2->vma_obj = shadow2;
+      list_insert_tail(&bottom->mmo_un.mmo_vmas, &vma2->vma_olink);
+      dbg(DBG_FORK, "shadowed 0x%p with 0x%p and 0x%p\n",
+          vma->vma_obj, shadow, shadow2);
     }
   }
   //dbginfo(DBG_VMMAP, vmmap_mapping_info, curproc->p_vmmap);

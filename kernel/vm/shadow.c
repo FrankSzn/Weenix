@@ -91,7 +91,7 @@ static void shadow_put(mmobj_t *o) {
     pframe_t *pf;
     list_iterate_begin(&o->mmo_respages, pf, pframe_t, pf_olink) {
       pframe_unpin(pf);
-      ++o->mmo_refcount;
+      ++o->mmo_refcount; // TODO: why reincrement?
       pframe_free(pf);
     } list_iterate_end();
     KASSERT(0 == o->mmo_nrespages);
