@@ -288,22 +288,22 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
   int found = 0;
   while (1) {
     // Iterate through children and reap dead ones
-    proc_t *iterator;
-    list_iterate_begin(&curproc->p_children, iterator, proc_t, p_child_link) {
-      if (pid == -1 || (pid > 0 && iterator->p_pid == pid)) {
+    proc_t *child;
+    list_iterate_begin(&curproc->p_children, child, proc_t, p_child_link) {
+      if (pid == -1 || (pid > 0 && child->p_pid == pid)) {
         found = 1;
-        if (iterator->p_state == PROC_DEAD) {
-          KASSERT(!list_empty(&iterator->p_threads));
+        if (child->p_state == PROC_DEAD) {
+          KASSERT(!list_empty(&child->p_threads));
           kthread_t *thread =
-              list_item(iterator->p_threads.l_next, kthread_t, kt_plink);
+              list_item(child->p_threads.l_next, kthread_t, kt_plink);
           KASSERT(thread->kt_state == KT_EXITED);
           if (status)
-            *status = iterator->p_status;
-          list_remove(&iterator->p_child_link);
-          pid_t pid = iterator->p_pid;
+            *status = child->p_status;
+          list_remove(&child->p_child_link);
+          pid_t pid = child->p_pid;
           kthread_destroy(thread);
-          slab_obj_free(proc_allocator, iterator);
-          pt_destroy_pagedir(iterator->p_pagedir);
+          pt_destroy_pagedir(child->p_pagedir);
+          slab_obj_free(proc_allocator, child);
           return pid;
         }
       }
