@@ -25,7 +25,7 @@ void kmutex_init(kmutex_t *mtx) {
  */
 void kmutex_lock(kmutex_t *mtx) {
   KASSERT(mtx->km_holder != curthr);
-  if (mtx->km_holder)
+  while (mtx->km_holder)
     sched_sleep_on(&mtx->km_waitq);
   KASSERT(!mtx->km_holder);
   mtx->km_holder = curthr;
