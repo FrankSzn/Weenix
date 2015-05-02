@@ -62,7 +62,7 @@
 # Debug message behavior. Note that this can be changed at runtime by
 # modifying the dbg_modes global variable.
 # All debug statements
-        DBG = all,-mm,-term,-disk,-pagealloc,-vnref,-fref
+        DBG = all,-mm,-term,-pagealloc,-vnref,-fref
 # Change to this for no debug statements
 #        DBG=-all
 

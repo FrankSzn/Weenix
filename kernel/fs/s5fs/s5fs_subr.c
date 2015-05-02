@@ -61,7 +61,7 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
   dbg(DBG_S5FS, "vno %d seekptr: %d\n", vnode->vn_vno, seekptr);
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(inode);
-  KASSERT(curthr == vnode->vn_mutex.km_holder);
+  //KASSERT(curthr == vnode->vn_mutex.km_holder);
   blocknum_t block_index = S5_DATA_BLOCK(seekptr);
   uint32_t blocknum;
   int indirect = 0; // Bool, true if indirect block

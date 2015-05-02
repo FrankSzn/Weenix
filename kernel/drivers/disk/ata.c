@@ -511,15 +511,25 @@ static int ata_do_operation(ata_disk_t *adisk, char *data, blocknum_t blocknum,
     ata_outb_reg(adisk->ata_channel, ATA_REG_COMMAND, ATA_CMD_WRITE_DMA);
   else
     ata_outb_reg(adisk->ata_channel, ATA_REG_COMMAND, ATA_CMD_READ_DMA);
+
+  // Pause, start, wait
   ata_pause(adisk->ata_channel);
-  dma_start(adisk->ata_channel, ATA_CHANNELS[adisk->ata_channel].atac_busmaster, write); 
-  sched_sleep_on(&adisk->ata_waitq); // Wait for interrupt
   int status = ata_inb_reg(adisk->ata_channel, ATA_REG_STATUS);
+  KASSERT(status = ATA_SR_DRDY);
+  dma_start(adisk->ata_channel, ATA_CHANNELS[adisk->ata_channel].atac_busmaster, write); 
+  do {
+    sched_sleep_on(&adisk->ata_waitq); // Wait for interrupt
+    status = ata_inb_reg(adisk->ata_channel, ATA_REG_STATUS);
+    dbg(DBG_DISK, "status: 0x%x\n", status);
+  } while (status & ATA_SR_BSY);
+
+  // Check for error
   int error = 0;
   if (status & ATA_SR_ERR) {
     error = ata_inb_reg(adisk->ata_channel, ATA_REG_ERROR);
-    dbg(DBG_DISK, "ata error: %d\n", error);
+    dbg(DBG_DISK, "ata error: 0x%x\n", error);
   }
+
   dma_reset(ATA_CHANNELS[adisk->ata_channel].atac_busmaster);
   kmutex_unlock(&adisk->ata_mutex);
   intr_setipl(old_ipl);

@@ -13,7 +13,7 @@
  * stack of execution.
  */
 void userland_entry(const regs_t *regs) {
-  dbg(DBG_FORK, "entering userland\N");
+  dbg(DBG_FORK, "entering userland\n");
   intr_disable();
   intr_setipl(IPL_LOW);
   /* We "return from the interrupt" to get into userland */

@@ -290,11 +290,9 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
  */
 static int s5fs_query_vnode(vnode_t *vnode) {
   dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
-  kmutex_lock(&vnode->vn_mutex);
   // Get inode
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(inode->s5_linkcount >= 0);
-  kmutex_unlock(&vnode->vn_mutex);
   return inode->s5_linkcount > 0;
 }
 
@@ -689,14 +687,12 @@ static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
   dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(ss);
-  kmutex_lock(&vnode->vn_mutex);
   ss->st_mode = vnode->vn_mode;
   ss->st_ino = vnode->vn_vno;
   ss->st_nlink = inode->s5_linkcount;
   ss->st_size = inode->s5_size;
   ss->st_blksize = S5_BLOCK_SIZE;
   ss->st_blocks = s5_inode_blocks(vnode);
-  kmutex_unlock(&vnode->vn_mutex);
   return 0;
 }
 
@@ -711,12 +707,6 @@ static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
   KASSERT(vnode);
   KASSERT(pagebuf);
   KASSERT(PAGE_ALIGNED(pagebuf));
-  int locked = 0;
-  // TODO: this seems like a hack
-  if (vnode->vn_mutex.km_holder != curthr) {
-    kmutex_lock(&vnode->vn_mutex);
-    locked = 1;
-  }
   // Find block
   int block_no = s5_seek_to_block(vnode, offset, 0);
   if (block_no < 0) { // Error
@@ -731,7 +721,6 @@ static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
   } else { // Sparse block, fill with zeros
     memset(pagebuf, 0, S5_BLOCK_SIZE);
   }
-  if (locked) kmutex_unlock(&vnode->vn_mutex);
   return status;
 }
 
