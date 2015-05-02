@@ -102,7 +102,7 @@ int do_fork(struct regs *regs) {
       list_insert_tail(&bottom->mmo_un.mmo_vmas, &vma2->vma_olink);
       dbg(DBG_FORK, "shadowed 0x%p with 0x%p and 0x%p\n",
           vma->vma_obj, shadow, shadow2);
-    }
+    } // Else it's shared, so we're done
   }
   //dbginfo(DBG_VMMAP, vmmap_mapping_info, curproc->p_vmmap);
   //dbginfo(DBG_VMMAP, vmmap_mapping_info, new_proc->p_vmmap);
