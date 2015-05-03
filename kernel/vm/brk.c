@@ -56,23 +56,28 @@
 int do_brk(void *addr, void **ret) {
   dbg(DBG_BRK, "addr: 0x%p curr: 0x%p start: 0x%p\n", 
       addr, curproc->p_brk, curproc->p_start_brk);
+  // Return current brk
   if (!addr) {
     *ret = curproc->p_brk;
     return 0;
   }
+
+  // Low limit
   if (addr < curproc->p_start_brk) {
     dbg(DBG_BRK, "can't shorten past start_brk!\n");
     return -ENOMEM;
   }
-  uint32_t curpage = ADDR_TO_PN(curproc->p_brk);
+
+  // High limits
+  uint32_t curpage = ADDR_TO_PN(PAGE_ALIGN_UP(curproc->p_brk));
   vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, curpage-1);
   KASSERT(vma);
   uint32_t newpage = ADDR_TO_PN(PAGE_ALIGN_UP(addr));
-  if (newpage > USER_MEM_HIGH) {
+  if (PN_TO_ADDR(newpage) > USER_MEM_HIGH) {
     dbg(DBG_BRK, "can't exceed MEM_HIGH\n");
     return -ENOMEM;
   }
-  if (vmmap_lookup(curproc->p_vmmap, newpage-1)) {
+  if (!vmmap_is_range_empty(curproc->p_vmmap, curpage, newpage-1)) {
     dbg(DBG_BRK, "another vma is in the way\n");
     return -ENOMEM;
   }
