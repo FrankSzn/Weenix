@@ -67,12 +67,15 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
     }
   }
 
-  vmarea_t *new_area;
+  vmarea_t *new_area = NULL;
   int status = vmmap_map(curproc->p_vmmap, file ? file->f_vnode : NULL, 
-      ADDR_TO_PN(addr), len / PAGE_SIZE + 1, prot, 
+      ADDR_TO_PN(addr), (len-1) / PAGE_SIZE + 1, prot, 
       flags, off, VMMAP_DIR_HILO, &new_area);
-  if (new_area)
+  if (new_area) {
     tlb_flush_range(PN_TO_ADDR(new_area->vma_start), len / PAGE_SIZE);
+    pt_unmap_range(curproc->p_pagedir, new_area->vma_start << PAGE_SHIFT, 
+        new_area->vma_end << PAGE_SHIFT);
+  }
   if (!status) *ret = PN_TO_ADDR(new_area->vma_start);
   return status;
 }
@@ -89,8 +92,12 @@ int do_munmap(void *addr, size_t len) {
       return -EINVAL;
   if (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)
     return -EINVAL;
-  int npages = len / PAGE_SIZE + 1;
-  int status = vmmap_remove(curproc->p_vmmap, (uint32_t)addr, npages);
-  tlb_flush_range((uint32_t)addr, npages);
+  int lopage = (uint32_t)addr/PAGE_SIZE;
+  int npages = (len-1) / PAGE_SIZE + 1;
+  int status = vmmap_remove(curproc->p_vmmap, lopage, npages);
+  // Clear caches
+  pt_unmap_range(curproc->p_pagedir, lopage * PAGE_SIZE, 
+      (lopage + npages) * PAGE_SIZE);
+  tlb_flush_range(lopage * PAGE_SIZE, npages);
   return status;
 }

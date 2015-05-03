@@ -205,11 +205,6 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   KASSERT(flags & MAP_PRIVATE || flags & MAP_SHARED);
   KASSERT(PAGE_ALIGNED(off));
   KASSERT(npages);
-  KASSERT((prot == PROT_NONE) ||
-      prot == (PROT_READ | PROT_EXEC)||
-      prot == (PROT_READ | PROT_WRITE) ||
-      prot == (PROT_WRITE | PROT_EXEC) ||
-      prot == (PROT_READ | PROT_EXEC | PROT_WRITE));
   vmarea_t *new_area;
   int unmap = 0;
   if (!lopage) { // Find a region big enough
@@ -303,7 +298,11 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
   dbg(DBG_VMMAP, "0x%p - 0x%p\n", (void *)(lopage*PAGE_SIZE), (void *)(highpage*PAGE_SIZE));
   KASSERT(npages);
   vmarea_t *vma;
+
+
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
+    dbg(DBG_VMMAP, "0x%p - 0x%p\n", (void *)(vma->vma_start*PAGE_SIZE), 
+        (void *)(vma->vma_end*PAGE_SIZE));
     if (vma->vma_start < lopage) {
       if (highpage < vma->vma_end) { // Case 1, split area
         dbg(DBG_VMMAP, "case 1\n");
@@ -321,7 +320,7 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
         vma->vma_end = lopage;
         KASSERT(vma->vma_end - vma->vma_start);
       }
-    } else if (highpage < vma->vma_end) { // Case 3
+    } else if (vma->vma_start <= highpage && highpage < vma->vma_end) { // Case 3
       dbg(DBG_VMMAP, "case 3\n");
       vma->vma_off -= highpage - vma->vma_start;
       vma->vma_start = highpage;
