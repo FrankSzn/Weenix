@@ -5,6 +5,7 @@
 #include "mm/mm.h"
 #include "mm/page.h"
 #include "mm/mman.h"
+#include "mm/tlb.h"
 
 #include "vm/mmap.h"
 #include "vm/vmmap.h"
@@ -60,26 +61,32 @@ int do_brk(void *addr, void **ret) {
     return 0;
   }
   if (addr < curproc->p_start_brk) {
-    dbg(DBG_BRK, "can't shorten brk!\n");
+    dbg(DBG_BRK, "can't shorten past start_brk!\n");
     return -ENOMEM;
   }
-  // TODO: what to return?
-  // TODO: clear caches while shortening
-  vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, ADDR_TO_PN(curproc->p_brk));
+  uint32_t curpage = ADDR_TO_PN(curproc->p_brk);
+  vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, curpage-1);
   KASSERT(vma);
-  uint32_t highpage = MAX(ADDR_TO_PN(PAGE_ALIGN_UP(addr)) + 1,
-      vma->vma_end);
-  if (highpage > USER_MEM_HIGH) {
+  uint32_t newpage = ADDR_TO_PN(PAGE_ALIGN_UP(addr));
+  if (newpage > USER_MEM_HIGH) {
     dbg(DBG_BRK, "can't exceed MEM_HIGH\n");
     return -ENOMEM;
   }
-  if (vmmap_lookup(curproc->p_vmmap, highpage)) {
+  if (vmmap_lookup(curproc->p_vmmap, newpage-1)) {
     dbg(DBG_BRK, "another vma is in the way\n");
     return -ENOMEM;
   }
-  vma->vma_end = highpage;
-  curproc->p_brk = addr;
 
-  if (ret) *ret = addr;
+  // Flush caches if shortening
+  if (newpage < vma->vma_end) {
+    void *new_brk = PN_TO_ADDR(newpage);
+    tlb_flush_range(new_brk, vma->vma_end - newpage);
+    pt_unmap_range(curproc->p_pagedir, new_brk, PN_TO_ADDR(vma->vma_end));
+  }
+
+  vma->vma_end = newpage;
+  curproc->p_brk = PN_TO_ADDR(newpage);
+  if (ret) *ret = curproc->p_brk;
+
   return 0;
 }
