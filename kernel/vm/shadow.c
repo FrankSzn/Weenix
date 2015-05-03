@@ -171,6 +171,7 @@ static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
     } else { // Base object, not a shadow object
       pframe_pin(pf);
       int status = pframe_get(o, pf->pf_pagenum, &page);
+      dbg(DBG_VM, "copying from 0x%p\n", page->pf_addr);
       if (!status) memcpy(pf->pf_addr, page->pf_addr, PAGE_SIZE);
       KASSERT(!status);
       return status;

@@ -296,7 +296,8 @@ int pframe_get(struct mmobj *o, uint32_t pagenum, pframe_t **result) {
     }
   } else { // Not resident, allocate new page
     *result = pframe_alloc(o, pagenum);
-    dbg(DBG_PFRAME, "allocated new pframe %p\n", *result);
+    dbg(DBG_PFRAME, "allocated new pframe %p, page %p\n", 
+        *result, (*result)->pf_addr);
     int status = pframe_fill(*result);
     if (status) return status;
     if (pageoutd_needed()) {
