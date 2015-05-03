@@ -65,6 +65,7 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   // TODO: check NONE flag
   if (((cause & FAULT_WRITE) && !(PROT_WRITE & vma->vma_prot)) ||
       ((cause & FAULT_EXEC) && !(PROT_EXEC & vma->vma_prot)) ||
+      (!(PROT_READ & vma->vma_prot)) ||
       (PROT_NONE & vma->vma_prot)) {
     dbg(DBG_VM, "SEGFAULT! (permissions)\n");
     proc_kill(curproc, EFAULT);
