@@ -310,8 +310,11 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
         KASSERT(new_vma);
         memcpy(new_vma, vma, sizeof(vmarea_t));
         new_vma->vma_obj->mmo_ops->ref(new_vma->vma_obj);
+
         vma->vma_end = lopage;
         new_vma->vma_start = highpage;
+        new_vma->vma_off += new_vma->vma_start - vma->vma_start;
+
         vmmap_insert(map, new_vma);
         KASSERT(vma->vma_end - vma->vma_start);
         KASSERT(new_vma->vma_end - new_vma->vma_start);
@@ -322,7 +325,7 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
       }
     } else if (vma->vma_start <= highpage && highpage < vma->vma_end) { // Case 3
       dbg(DBG_VMMAP, "case 3\n");
-      vma->vma_off -= highpage - vma->vma_start;
+      vma->vma_off += highpage - vma->vma_start;
       vma->vma_start = highpage;
       KASSERT(vma->vma_end - vma->vma_start);
     } else if (vma->vma_end <= highpage) { // Case 4
