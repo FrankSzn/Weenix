@@ -53,7 +53,7 @@ int do_fork(struct regs *regs) {
   // Set up new proc
   proc_t *new_proc = proc_create("");
   KASSERT(new_proc);
-  memcpy(&new_proc->p_comm, curproc->p_comm, PROC_NAME_LEN);
+  memcpy(new_proc->p_comm, curproc->p_comm, PROC_NAME_LEN);
   new_proc->p_status = curproc->p_status;
   new_proc->p_state = curproc->p_state;
   new_proc->p_pagedir = pt_create_pagedir();
@@ -91,6 +91,8 @@ int do_fork(struct regs *regs) {
       mmobj_t *shadow = shadow_create();
       mmobj_t *shadow2 = shadow_create();
       KASSERT(shadow && shadow2);
+      dbg(DBG_FORK, "shadowing 0x%p with 0x%p and 0x%p\n",
+          vma->vma_obj, shadow, shadow2);
       mmobj_t *bottom = mmobj_bottom_obj(vma->vma_obj);
       KASSERT(bottom && !bottom->mmo_shadowed);
       shadow->mmo_un.mmo_bottom_obj = bottom;
@@ -100,8 +102,6 @@ int do_fork(struct regs *regs) {
       vma->vma_obj = shadow;
       vma2->vma_obj = shadow2;
       list_insert_tail(&bottom->mmo_un.mmo_vmas, &vma2->vma_olink);
-      dbg(DBG_FORK, "shadowed 0x%p with 0x%p and 0x%p\n",
-          vma->vma_obj, shadow, shadow2);
     } // Else it's shared, so we're done
   }
   //dbginfo(DBG_VMMAP, vmmap_mapping_info, curproc->p_vmmap);

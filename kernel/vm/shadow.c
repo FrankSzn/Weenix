@@ -171,7 +171,8 @@ static int shadow_fillpage(mmobj_t *o, pframe_t *pf) {
     } else { // Base object, not a shadow object
       pframe_pin(pf);
       int status = pframe_get(o, pf->pf_pagenum, &page);
-      memcpy(pf->pf_addr, page->pf_addr, PAGE_SIZE);
+      if (!status) memcpy(pf->pf_addr, page->pf_addr, PAGE_SIZE);
+      KASSERT(!status);
       return status;
     }
     o = o->mmo_shadowed;

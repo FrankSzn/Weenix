@@ -306,6 +306,7 @@ int pframe_get(struct mmobj *o, uint32_t pagenum, pframe_t **result) {
       pframe_unpin(*result);
     }
   }
+  dbg(DBG_PFRAME, "got frame 0x%p\n", *result);
   return 0;
 }
 
