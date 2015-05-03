@@ -123,7 +123,7 @@ int do_fork(struct regs *regs) {
   regs->r_eax = 0; // TODO: check this
   new_thr->kt_ctx.c_esp = fork_setup_stack(regs, new_thr->kt_kstack);
   new_thr->kt_ctx.c_pdptr = new_proc->p_pagedir;
-  new_thr->kt_ctx.c_kstack = (uintptr_t)new_thr->kt_kstack + DEFAULT_STACK_SIZE;
+  new_thr->kt_ctx.c_kstack = (uintptr_t)new_thr->kt_kstack;
   new_thr->kt_ctx.c_kstacksz = DEFAULT_STACK_SIZE;
 
   dbg(DBG_FORK, "new proc: %d\n", new_proc->p_pid);

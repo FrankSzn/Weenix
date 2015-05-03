@@ -67,8 +67,8 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
       ((cause & FAULT_EXEC) && !(PROT_EXEC & vma->vma_prot)) ||
       (PROT_NONE & vma->vma_prot)) {
     dbg(DBG_VM, "SEGFAULT! (permissions)\n");
-  proc_kill(curproc, EFAULT);
-  return;
+    proc_kill(curproc, EFAULT);
+    return;
   }
   pframe_t *pf;
   int forwrite = cause & FAULT_WRITE ? 1 : 0;
@@ -78,8 +78,11 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   int flags = PD_PRESENT | PD_USER;
   if (forwrite) flags |= PD_WRITE;
   //if (cause & FAULT_WRITE) pframe_dirty(pf);
+  uintptr_t phys_addr = pt_virt_to_phys((uintptr_t)pf->pf_addr);
+  dbg(DBG_VM, "virtual 0x%p kernel 0x%p physical 0x%p\n",
+      (void *)vaddr, (void *)pf->pf_addr, (void *)phys_addr);
   if (pt_map(curproc->p_pagedir, PAGE_ALIGN_DOWN(vaddr), 
-        pt_virt_to_phys((uintptr_t)pf->pf_addr), flags, flags)) {
+        phys_addr, flags, flags)) {
     dbg(DBG_VM, "SEGFAULT! (no memory)\n");
     proc_kill(curproc, ENOMEM);
   }
