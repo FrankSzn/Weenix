@@ -63,6 +63,8 @@ int do_brk(void *addr, void **ret) {
     dbg(DBG_BRK, "can't shorten brk!\n");
     return -ENOMEM;
   }
+  // TODO: what to return?
+  // TODO: clear caches while shortening
   vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, ADDR_TO_PN(curproc->p_brk));
   KASSERT(vma);
   uint32_t highpage = MAX(ADDR_TO_PN(PAGE_ALIGN_UP(addr)) + 1,
