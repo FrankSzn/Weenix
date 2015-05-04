@@ -373,7 +373,8 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
   while (count) {
     // Find the page
     uint32_t pagenum = ADDR_TO_PN((char *)vaddr + ndone_total);
-    vmarea_t *vma = vmmap_lookup(map, pagenum);
+    vmarea_t *vma = NULL;
+    vma = vmmap_lookup(map, pagenum);
     KASSERT(vma);
     pframe_t *pframe;
     pframe_lookup(vma->vma_obj, pagenum - vma->vma_start + vma->vma_off, 

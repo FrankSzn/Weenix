@@ -68,7 +68,7 @@ static int sys_read(read_args_t *arg) {
     return -1;
   }
   nread = err;
-  if ((err = copy_to_user(arg->buf, temp, nread)) < 0) {
+  if ((err = copy_to_user(kern_args.buf, temp, nread)) < 0) {
     curthr->kt_errno = -err;
     page_free(temp);
     return -1;
@@ -81,7 +81,6 @@ static int sys_read(read_args_t *arg) {
  * This function is almost identical to sys_read.  See comments above.
  */
 static int sys_write(write_args_t *arg) {
-  dbg(DBG_SYSCALL, "\n");
   write_args_t kern_args;
   int err;
   if ((err = copy_from_user(&kern_args, arg, sizeof(write_args_t))) < 0) {
@@ -89,7 +88,7 @@ static int sys_write(write_args_t *arg) {
     return -1;
   }
   void *temp = page_alloc();
-  if ((err = copy_from_user(temp, arg->buf, kern_args.nbytes)) < 0) {
+  if ((err = copy_from_user(temp, kern_args.buf, kern_args.nbytes)) < 0) {
     curthr->kt_errno = -err;
     page_free(temp);
     return -1;
@@ -130,7 +129,7 @@ static int sys_getdents(getdents_args_t *arg) {
       return -1;
     }
     int status;
-    if ((status = copy_to_user(arg->dirp + nread / sizeof(dirent_t), 
+    if ((status = copy_to_user(kern_args.dirp + nread / sizeof(dirent_t), 
             &dirent, sizeof(dirent_t))) < 0) {
       dbg(DBG_SYSCALL, "\n");
       curthr->kt_errno = -status;
