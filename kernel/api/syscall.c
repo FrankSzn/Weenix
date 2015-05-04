@@ -63,7 +63,7 @@ static int sys_read(read_args_t *arg) {
   }
   void *temp = page_alloc();
   if ((err = do_read(kern_args.fd, temp, kern_args.nbytes)) < 0) {
-    curthr->kt_errno = err;
+    curthr->kt_errno = -err;
     page_free(temp);
     return -1;
   }
@@ -94,7 +94,7 @@ static int sys_write(write_args_t *arg) {
     return -1;
   }
   if ((err = do_write(kern_args.fd, temp, kern_args.nbytes)) < 0) {
-    curthr->kt_errno = err;
+    curthr->kt_errno = -err;
     page_free(temp);
     return -1;
   }
@@ -125,7 +125,7 @@ static int sys_getdents(getdents_args_t *arg) {
   for (nread = 0; nread < kern_args.count; nread += sizeof(dirent_t)) {
     if ((err = do_getdent(kern_args.fd, &dirent)) < 0) {
       dbg(DBG_SYSCALL, "\n");
-      curthr->kt_errno = err;
+      curthr->kt_errno = -err;
       return -1;
     }
     int status;
