@@ -117,6 +117,7 @@ static int sys_getdents(getdents_args_t *arg) {
   getdents_args_t kern_args;
   int err;
   if ((err = copy_from_user(&kern_args, arg, sizeof(getdents_args_t))) < 0) {
+    dbg(DBG_SYSCALL, "\n");
     curthr->kt_errno = -err;
     return -1;
   }
@@ -124,17 +125,20 @@ static int sys_getdents(getdents_args_t *arg) {
   size_t nread;
   for (nread = 0; nread < kern_args.count; nread += sizeof(dirent_t)) {
     if ((err = do_getdent(kern_args.fd, &dirent)) < 0) {
+      dbg(DBG_SYSCALL, "\n");
       curthr->kt_errno = err;
       return -1;
     }
     int status;
-    if ((status = copy_to_user(arg->dirp + nread * sizeof(dirent_t), 
+    if ((status = copy_to_user(arg->dirp + nread / sizeof(dirent_t), 
             &dirent, sizeof(dirent_t))) < 0) {
+      dbg(DBG_SYSCALL, "\n");
       curthr->kt_errno = -status;
       return -1;
     }
     if (err == 0) {// End of directory
-      return 0;
+      dbg(DBG_SYSCALL, "end of dir\n");
+      return nread;
     }
     KASSERT(err == sizeof(dirent_t));
   }

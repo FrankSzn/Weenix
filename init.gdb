@@ -6,3 +6,4 @@ continue
 echo add-symbol-file user/usr/bin/hello.exec 0x08048208 \n
 echo add-symbol-file user/sbin/init.exec 0x08048094 \n
 echo add-symbol-file user/bin/sh.exec 0x08048094 \n
+echo add-symbol-file user/usr/bin/vfstest.exec 0x08048094 \n
