@@ -38,7 +38,7 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
     dbg(DBG_VM, "error len: %d off: %d\n", len, off);
     return -EINVAL;
   }
-  if (addr && (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)) {
+  if (flags & MAP_FIXED && (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)) {
     dbg(DBG_VM, "error\n");
     return -EINVAL;
   }
@@ -72,9 +72,10 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
       ADDR_TO_PN(addr), (len-1) / PAGE_SIZE + 1, prot, 
       flags, off, VMMAP_DIR_HILO, &new_area);
   if (new_area) {
-    tlb_flush_range(PN_TO_ADDR(new_area->vma_start), len / PAGE_SIZE);
     pt_unmap_range(curproc->p_pagedir, new_area->vma_start << PAGE_SHIFT, 
         new_area->vma_end << PAGE_SHIFT);
+    tlb_flush_range(PN_TO_ADDR(new_area->vma_start), 
+        new_area->vma_end - new_area->vma_start);
   }
   fput(file);
   if (!status) *ret = PN_TO_ADDR(new_area->vma_start);

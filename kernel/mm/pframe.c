@@ -362,6 +362,7 @@ void pframe_migrate(pframe_t *pf, mmobj_t *dest) {
  * @param pf the page to pin
  */
 void pframe_pin(pframe_t *pf) { 
+  KASSERT(pf);
   dbg(DBG_PFRAME, "%d\n", pf->pf_pagenum);
   KASSERT(pf->pf_pincount >= 0);
   if (!pf->pf_pincount++) {
@@ -383,6 +384,7 @@ void pframe_pin(pframe_t *pf) {
  * @param pf a pinned page (a page with a positive pin count)
  */
 void pframe_unpin(pframe_t *pf) { 
+  KASSERT(pf);
   dbg(DBG_PFRAME, "%d down to %d\n", pf->pf_pagenum, pf->pf_pincount - 1);
   if (!--pf->pf_pincount) {
     list_remove(&pf->pf_link);
@@ -556,6 +558,7 @@ void pframe_remove_from_pts(pframe_t *pf) {
       uintptr_t vaddr =
           (uintptr_t)PN_TO_ADDR(vma->vma_start + pf->pf_pagenum - vma->vma_off);
       /* And unmap it from that area's proc */
+      KASSERT(vma->vma_vmmap);
       if (NULL != vma->vma_vmmap->vmm_proc) {
         pt_unmap(vma->vma_vmmap->vmm_proc->p_pagedir, vaddr);
       }

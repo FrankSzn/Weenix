@@ -89,9 +89,9 @@ static void shadow_ref(mmobj_t *o) {
 #define mmobj_to_vnode(o) (CONTAINER_OF((o), vnode_t, vn_mmobj))
 static void shadow_put(mmobj_t *o) { 
   KASSERT(o->mmo_refcount > 0);
-  dbg(DBG_VM, "mmobj %p bottom vno %d down to %d\n", o,
+  dbg(DBG_VM, "mmobj %p bottom vno %d down to %d, respages %d\n", o,
       mmobj_to_vnode(o->mmo_un.mmo_bottom_obj)->vn_vno,
-      o->mmo_refcount - 1);
+      o->mmo_refcount - 1, o->mmo_nrespages);
   if (o->mmo_refcount - 1 == o->mmo_nrespages) {
     pframe_t *pf;
     list_iterate_begin(&o->mmo_respages, pf, pframe_t, pf_olink) {

@@ -230,6 +230,7 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
   new_area->vma_end = lopage + npages;
   new_area->vma_off = off;
   new_area->vma_flags = flags;
+  new_area->vma_vmmap = map;
 
   if (file) {
     if (flags & MAP_PRIVATE) { // Private mapping (shadow object)
@@ -237,12 +238,12 @@ int vmmap_map(vmmap_t *map, vnode_t *file, uint32_t lopage, uint32_t npages,
       dbg(DBG_VMMAP, "allocated shadow object: 0x%p\n", shadow_obj);
       KASSERT(shadow_obj);
       new_area->vma_obj = shadow_obj;
-      mmobj_t *file_obj;
+      mmobj_t *file_obj = NULL;
       file->vn_ops->mmap(file, new_area, &file_obj);
       KASSERT(file_obj);
       shadow_obj->mmo_shadowed = file_obj;
       shadow_obj->mmo_un.mmo_bottom_obj = file_obj; // link to bottom
-    } else { // Not a shadow object
+    } else { // Shared, not shadowed
       file->vn_ops->mmap(file, new_area, &new_area->vma_obj);
     }
   } else { // No file (anonymous)
@@ -327,17 +328,17 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
         vma->vma_end = lopage;
         KASSERT(vma->vma_end - vma->vma_start);
       }
-    } else if (vma->vma_start <= highpage && highpage < vma->vma_end) { // Case 3
-      dbg(DBG_VMMAP, "case 3\n");
-      vma->vma_off += highpage - vma->vma_start;
-      vma->vma_start = highpage;
-      KASSERT(vma->vma_end - vma->vma_start);
     } else if (vma->vma_end <= highpage) { // Case 4
       dbg(DBG_VMMAP, "case 4\n");
       vma->vma_obj->mmo_ops->put(vma->vma_obj);
       list_remove(&vma->vma_plink);
       list_remove(&vma->vma_olink);
       vmarea_free(vma); 
+    } else if (vma->vma_start < highpage) { // Case 3
+      dbg(DBG_VMMAP, "case 3\n");
+      vma->vma_off += highpage - vma->vma_start;
+      vma->vma_start = highpage;
+      KASSERT(vma->vma_end - vma->vma_start);
     }
   } list_iterate_end();
   KASSERT(!vmmap_lookup(map, lopage));
