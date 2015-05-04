@@ -154,7 +154,7 @@ int vfs_shutdown() {
 
   if (0 > vfs_is_in_use(fs)) {
     panic("vfs_shutdown: found active vnodes in root "
-          "filesystem!!! This shouldn't happen!!\n");
+          "filesystem!\n");
   }
 
   if (vn->vn_fs->fs_op->umount) {

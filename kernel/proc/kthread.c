@@ -135,6 +135,7 @@ void kthread_cancel(kthread_t *kthr, void *retval) {
  * cleaned up.
  */
 void kthread_exit(void *retval) {
+  dbg(DBG_PROC, "pid %d wants to exit\n", curproc->p_pid);
   KASSERT(!curthr->kt_wchan);
   KASSERT(!list_link_is_linked(&curthr->kt_qlink));
   curthr->kt_retval = retval;

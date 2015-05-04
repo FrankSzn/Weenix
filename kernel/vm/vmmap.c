@@ -62,18 +62,22 @@ vmmap_t *vmmap_create(void) {
 
 /* Removes all vmareas from the address space and frees the
  * vmmap struct. */
+#define mmobj_to_vnode(o) (CONTAINER_OF((o), vnode_t, vn_mmobj))
 void vmmap_destroy(vmmap_t *map) { 
   dbg(DBG_VMMAP, "\n");
   KASSERT(map);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-    dbg(DBG_VMMAP, "0x%p %p\n", vma->vma_obj, vma->vma_obj->mmo_shadowed);
+    dbg(DBG_VMMAP, "obj 0x%p shadowing 0x%p\n", vma->vma_obj, vma->vma_obj->mmo_shadowed);
     KASSERT(list_link_is_linked(&vma->vma_olink));
+    dbg(DBG_VMMAP, "putting bottom vno %d\n", 
+        mmobj_to_vnode(mmobj_bottom_obj(vma->vma_obj))->vn_vno);
     vma->vma_obj->mmo_ops->put(vma->vma_obj);
     list_remove(&vma->vma_olink);
     list_remove(&vma->vma_plink);
     vmarea_free(vma);
   } list_iterate_end();
+  dbg(DBG_VM, "finished cleaning vma of pid %d\n", curproc->p_pid);
   slab_obj_free(vmmap_allocator, map);
 }
 

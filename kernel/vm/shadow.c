@@ -10,6 +10,7 @@
 #include "mm/page.h"
 #include "mm/slab.h"
 #include "mm/tlb.h"
+#include "fs/vnode.h"
 
 #include "vm/vmmap.h"
 #include "vm/shadow.h"
@@ -73,7 +74,9 @@ mmobj_t *shadow_create() {
 /*
  * Increment the reference count on the object.
  */
-static void shadow_ref(mmobj_t *o) { ++o->mmo_refcount; }
+static void shadow_ref(mmobj_t *o) {
+  ++o->mmo_refcount; 
+}
 
 /*
  * Decrement the reference count on the object. If, however, the
@@ -83,10 +86,12 @@ static void shadow_ref(mmobj_t *o) { ++o->mmo_refcount; }
  * be used again. You should unpin and uncache all of the object's
  * pages and then free the object itself.
  */
+#define mmobj_to_vnode(o) (CONTAINER_OF((o), vnode_t, vn_mmobj))
 static void shadow_put(mmobj_t *o) { 
   KASSERT(o->mmo_refcount > 0);
-  dbg(DBG_VM, "mmobj %p down to %d, respages %d\n", 
-      o, o->mmo_refcount - 1, o->mmo_nrespages);
+  dbg(DBG_VM, "mmobj %p bottom vno %d down to %d\n", o,
+      mmobj_to_vnode(o->mmo_un.mmo_bottom_obj)->vn_vno,
+      o->mmo_refcount - 1);
   if (o->mmo_refcount - 1 == o->mmo_nrespages) {
     pframe_t *pf;
     list_iterate_begin(&o->mmo_respages, pf, pframe_t, pf_olink) {

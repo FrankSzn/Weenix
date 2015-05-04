@@ -76,6 +76,7 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
     pt_unmap_range(curproc->p_pagedir, new_area->vma_start << PAGE_SHIFT, 
         new_area->vma_end << PAGE_SHIFT);
   }
+  fput(file);
   if (!status) *ret = PN_TO_ADDR(new_area->vma_start);
   return status;
 }

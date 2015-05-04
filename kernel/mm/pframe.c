@@ -149,8 +149,7 @@ void pframe_shutdown() {
   int pid = pageoutd->p_pid;
   int child = do_waitpid(-1, 0, NULL);
   KASSERT(pid == child && "waited on process other than pageoutd");
-  KASSERT(0 == npinned && "WARNING: FOUND PINNED "
-                          "PAGES!!!!!!!!!! SOMETHING IS BROKEN!!\n");
+  KASSERT(0 == npinned && "Found pinned pages!\n");
 
   /* Clean all pages (sync with secondary storage) */
   pframe_clean_all();

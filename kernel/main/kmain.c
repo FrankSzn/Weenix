@@ -179,7 +179,7 @@ static void *idleproc_run(int arg1, void *arg2) {
   do_mknod("/dev/null", S_IFCHR, MKDEVID(1,0));
   do_mknod("/dev/zero", S_IFCHR, MKDEVID(1,1));
   do_mknod("/dev/tty0", S_IFCHR, MKDEVID(2,0));
-  do_mknod("/dev/tty1", S_IFCHR, MKDEVID(2,1));
+  //do_mknod("/dev/tty1", S_IFCHR, MKDEVID(2,1));
   //do_mknod("/dev/tty2", S_IFCHR, MKDEVID(2,2));
   do_mknod("/dev/sda", S_IFBLK, MKDEVID(1,0));
 #endif
