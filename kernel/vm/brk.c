@@ -73,6 +73,7 @@ int do_brk(void *addr, void **ret) {
   vmarea_t *vma = vmmap_lookup(curproc->p_vmmap, curpage-1);
   KASSERT(vma);
   uint32_t newpage = ADDR_TO_PN(PAGE_ALIGN_UP(addr));
+  dbg(DBG_BRK, "new break pn: 0x%x\n", newpage);
   if (PN_TO_ADDR(newpage) > USER_MEM_HIGH) {
     dbg(DBG_BRK, "can't exceed MEM_HIGH\n");
     return -ENOMEM;
@@ -84,13 +85,14 @@ int do_brk(void *addr, void **ret) {
 
   // Flush caches if shortening
   if (newpage < vma->vma_end) {
+    dbg(DBG_BRK, "flushing for shortened range\n");
     void *new_brk = PN_TO_ADDR(newpage);
     tlb_flush_range(new_brk, vma->vma_end - newpage);
     pt_unmap_range(curproc->p_pagedir, new_brk, PN_TO_ADDR(vma->vma_end));
   }
 
   vma->vma_end = newpage;
-  curproc->p_brk = PN_TO_ADDR(newpage);
+  curproc->p_brk = addr;
   if (ret) *ret = curproc->p_brk;
 
   return 0;

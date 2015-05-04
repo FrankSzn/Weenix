@@ -90,12 +90,15 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
  * Remember to clear the TLB.
  */
 int do_munmap(void *addr, size_t len) {
+  dbg(DBG_VM, "addr: %p len: %d\n", addr, len);
   if (!PAGE_ALIGNED(addr) || !len)
       return -EINVAL;
   if (addr < (void *)USER_MEM_LOW || addr >= (void *)USER_MEM_HIGH)
     return -EINVAL;
   int lopage = (uint32_t)addr/PAGE_SIZE;
   int npages = (len-1) / PAGE_SIZE + 1;
+  if (lopage + npages > USER_MEM_HIGH >> PAGE_SHIFT)
+    return -EINVAL;
   int status = vmmap_remove(curproc->p_vmmap, lopage, npages);
   // Clear caches
   pt_unmap_range(curproc->p_pagedir, lopage * PAGE_SIZE, 
