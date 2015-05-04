@@ -74,12 +74,15 @@ int do_brk(void *addr, void **ret) {
   KASSERT(vma);
   uint32_t newpage = ADDR_TO_PN(PAGE_ALIGN_UP(addr));
   dbg(DBG_BRK, "new break pn: 0x%x\n", newpage);
+
+  // Don't change if it's the same page
+  if (curpage == newpage) {
+    dbg(DBG_BRK, "same, not changing\n");
+    return 0;    
+  }
+
   if (PN_TO_ADDR(newpage) > USER_MEM_HIGH) {
     dbg(DBG_BRK, "can't exceed MEM_HIGH\n");
-    return -ENOMEM;
-  }
-  if (!vmmap_is_range_empty(curproc->p_vmmap, curpage, newpage-1)) {
-    dbg(DBG_BRK, "another vma is in the way\n");
     return -ENOMEM;
   }
 
@@ -89,7 +92,13 @@ int do_brk(void *addr, void **ret) {
     void *new_brk = PN_TO_ADDR(newpage);
     tlb_flush_range(new_brk, vma->vma_end - newpage);
     pt_unmap_range(curproc->p_pagedir, new_brk, PN_TO_ADDR(vma->vma_end));
+  } else {
+    if (!vmmap_is_range_empty(curproc->p_vmmap, curpage, newpage-curpage)) {
+      dbg(DBG_BRK, "another vma is in the way\n");
+      return -ENOMEM;
+    }
   }
+
 
   vma->vma_end = newpage;
   curproc->p_brk = addr;

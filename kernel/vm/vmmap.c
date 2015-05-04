@@ -351,7 +351,7 @@ int vmmap_remove(vmmap_t *map, const uint32_t lopage, const uint32_t npages) {
  * given range, 0 otherwise.
  */
 int vmmap_is_range_empty(vmmap_t *map, uint32_t startvfn, uint32_t npages) {
-  //dbg(DBG_VMMAP, "startvfn: %d npages: %d\n", startvfn, npages);
+  dbg(DBG_VMMAP, "startvfn: 0x%x npages: %d\n", startvfn, npages);
   uint32_t endvfn = startvfn + npages;
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {

@@ -77,7 +77,7 @@ int do_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t off,
     tlb_flush_range(PN_TO_ADDR(new_area->vma_start), 
         new_area->vma_end - new_area->vma_start);
   }
-  fput(file);
+  if (file) fput(file);
   if (!status) *ret = PN_TO_ADDR(new_area->vma_start);
   return status;
 }
