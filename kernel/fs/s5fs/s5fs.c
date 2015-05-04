@@ -685,6 +685,7 @@ static int s5fs_readdir(vnode_t *vnode, off_t offset, struct dirent *d) {
  */
 static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
   dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
+  kmutex_lock(&vnode->vn_mutex);
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(ss);
   ss->st_mode = vnode->vn_mode;
@@ -693,6 +694,7 @@ static int s5fs_stat(vnode_t *vnode, struct stat *ss) {
   ss->st_size = inode->s5_size;
   ss->st_blksize = S5_BLOCK_SIZE;
   ss->st_blocks = s5_inode_blocks(vnode);
+  kmutex_unlock(&vnode->vn_mutex);
   return 0;
 }
 
