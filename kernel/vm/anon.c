@@ -82,10 +82,10 @@ static void anon_put(mmobj_t *o) {
       pframe_unpin(pf);
       pframe_free(pf);
     } list_iterate_end();
-    --o->mmo_refcount;
     KASSERT(0 == o->mmo_nrespages);
     slab_obj_free(anon_allocator, o);
   }
+  --o->mmo_refcount;
 }
 
 /* Get the corresponding page from the mmobj. No special handling is

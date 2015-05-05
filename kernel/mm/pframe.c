@@ -149,13 +149,19 @@ void pframe_shutdown() {
   int pid = pageoutd->p_pid;
   int child = do_waitpid(-1, 0, NULL);
   KASSERT(pid == child && "waited on process other than pageoutd");
+  pframe_t *pf;
+  if (npinned) {
+    list_iterate_begin(&pinned_list, pf, pframe_t, pf_link) {
+      panic("Found pinned frame with mmobj 0x%p\n", pf->pf_obj);
+    }
+    list_iterate_end();
+  }
   KASSERT(0 == npinned && "Found pinned pages!\n");
 
   /* Clean all pages (sync with secondary storage) */
   pframe_clean_all();
 
   /* Free all pages */
-  pframe_t *pf;
   list_iterate_begin(&alloc_list, pf, pframe_t, pf_link) {
     KASSERT(!pframe_is_dirty(pf));
     KASSERT(!pframe_is_busy(pf));

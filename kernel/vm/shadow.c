@@ -18,6 +18,8 @@
 
 #define SHADOW_SINGLETON_THRESHOLD 5
 
+#define mmobj_to_vnode(o) (CONTAINER_OF((o), vnode_t, vn_mmobj))
+
 int shadow_count = 0; /* for debugging/verification purposes */
 #ifdef __SHADOWD__
 /*
@@ -75,6 +77,9 @@ mmobj_t *shadow_create() {
  * Increment the reference count on the object.
  */
 static void shadow_ref(mmobj_t *o) {
+  dbg(DBG_VM, "mmobj %p bottom vno %d up to %d, respages %d\n", o,
+      mmobj_to_vnode(o->mmo_un.mmo_bottom_obj)->vn_vno,
+      o->mmo_refcount + 1, o->mmo_nrespages);
   ++o->mmo_refcount; 
 }
 
@@ -86,22 +91,20 @@ static void shadow_ref(mmobj_t *o) {
  * be used again. You should unpin and uncache all of the object's
  * pages and then free the object itself.
  */
-#define mmobj_to_vnode(o) (CONTAINER_OF((o), vnode_t, vn_mmobj))
 static void shadow_put(mmobj_t *o) { 
   KASSERT(o->mmo_refcount > 0);
   dbg(DBG_VM, "mmobj %p bottom vno %d down to %d, respages %d\n", o,
       mmobj_to_vnode(o->mmo_un.mmo_bottom_obj)->vn_vno,
       o->mmo_refcount - 1, o->mmo_nrespages);
-  if (o->mmo_refcount - 1 == o->mmo_nrespages) {
+  if (--o->mmo_refcount == o->mmo_nrespages) {
     pframe_t *pf;
     list_iterate_begin(&o->mmo_respages, pf, pframe_t, pf_olink) {
       pframe_unpin(pf);
+      ++o->mmo_refcount;
       pframe_free(pf);
     } list_iterate_end();
-    --o->mmo_refcount;
     KASSERT(0 == o->mmo_nrespages);
     KASSERT(o->mmo_shadowed);
-    dbg(DBG_VM, "putting %p\n",  o->mmo_shadowed);
     o->mmo_shadowed->mmo_ops->put(o->mmo_shadowed);
     slab_obj_free(shadow_allocator, o);
   }

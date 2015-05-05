@@ -101,7 +101,7 @@ void vref(vnode_t *vn) {
   KASSERT(0 < vn->vn_refcount);
   vn->vn_refcount++;
   dbg(DBG_VNREF, "vref: 0x%p, 0x%p vno %ld up to %d, nrespages=%d\n", vn,
-      vn->vn_fs, (long)vn->vn_vno, vn->vn_refcount, vn->vn_nrespages);
+      vn->vn_mmobj, (long)vn->vn_vno, vn->vn_refcount, vn->vn_nrespages);
 }
 
 vnode_t *vget(struct fs *fs, ino_t vno) {

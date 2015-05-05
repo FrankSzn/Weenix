@@ -115,7 +115,8 @@ void kthread_cancel(kthread_t *kthr, void *retval) {
       kthr->kt_retval = retval;
       sched_cancel(kthr);
     } else {
-      panic("kthread_cancel called with invalid state\n");
+      panic("thread has invalid state %d at 0x%p\n",
+          kthr->kt_state, kthr->kt_state);
     }
     // TODO: what if the process isn't sleeping? could be on
     // run queue (proc_kill)

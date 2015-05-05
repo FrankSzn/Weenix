@@ -514,7 +514,7 @@ int do_lseek(int fd, int offset, int whence) {
  *        A component of path was too long.
  */
 int do_stat(const char *path, struct stat *buf) {
-  dbg(DBG_VFS, "\n");
+  dbg(DBG_VFS, "path: %d\n", path);
   struct vnode *res;
   int status = open_namev(path, O_RDONLY, &res, NULL);
   if (status) return status;
