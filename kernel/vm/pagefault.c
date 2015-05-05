@@ -74,12 +74,14 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   pframe_t *pf;
   int forwrite = cause & FAULT_WRITE ? 1 : 0;
   int status = pframe_lookup(vma->vma_obj, 
-      pn - vma->vma_start + vma->vma_off, forwrite, &pf);
+      pn - vma->vma_start + vma->vma_off, 0, &pf);
   if (status) {
     dbg(DBG_VM, "invalid page\n");
     proc_kill(curproc, EFAULT);
     return;
   }
+  status = pframe_lookup(vma->vma_obj, 
+      pn - vma->vma_start + vma->vma_off, forwrite, &pf);
   int flags = PD_PRESENT | PD_USER;
   if (forwrite) flags |= PD_WRITE;
   if (cause & FAULT_WRITE) pframe_dirty(pf);
