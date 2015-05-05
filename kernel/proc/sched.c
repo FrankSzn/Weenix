@@ -95,7 +95,7 @@ void sched_sleep_on(ktqueue_t *q) {
   KASSERT(!curthr->kt_wchan);
   // TODO: what behavior when canceled?
   if (curthr->kt_cancelled)
-    kthread_exit(NULL);
+    kthread_exit(EINTR);
 }
 
 /*
@@ -115,9 +115,8 @@ int sched_cancellable_sleep_on(ktqueue_t *q) {
   dbg(DBG_PROC, "thread %d woke up\n", curproc->p_pid);
   KASSERT(!curthr->kt_wchan);
   if (curthr->kt_cancelled)
-    return -EINTR;
-  else
-    return 0;
+    kthread_exit(EINTR);
+  return 0;
 }
 
 kthread_t *sched_wakeup_on(ktqueue_t *q) {
@@ -233,8 +232,10 @@ void sched_make_runnable(kthread_t *thr) {
   KASSERT(!thr->kt_wchan);
   int old_ipl = intr_getipl();
   KASSERT(thr && "Thread must be non null");
+  intr_disable();
   intr_setipl(IPL_HIGH);
   thr->kt_state = KT_RUN;
   ktqueue_enqueue(&kt_runq, thr);
   intr_setipl(old_ipl);
+  intr_enable();
 }

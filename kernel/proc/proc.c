@@ -159,10 +159,10 @@ void proc_cleanup(int status) {
     KASSERT(list_empty(&curproc->p_children));
   else {
     // Add process's children to init's children
-    proc_t *iterator;
-    list_iterate_begin(&curproc->p_children, iterator, proc_t, p_child_link) {
-      list_insert_tail(&proc_initproc->p_children, &iterator->p_child_link);
-      list_remove(&iterator->p_child_link);
+    proc_t *child;
+    list_iterate_begin(&curproc->p_children, child, proc_t, p_child_link) {
+      list_remove(&child->p_child_link);
+      list_insert_tail(&proc_initproc->p_children, &child->p_child_link);
     }
     list_iterate_end();
   }
@@ -191,6 +191,7 @@ void proc_cleanup(int status) {
  * In Weenix, this is only called from proc_kill_all.
  */
 void proc_kill(proc_t *p, int status) {
+  KASSERT(p->p_state == PROC_RUNNING || p->p_state == PROC_DEAD);
   // cancel all threads
   if (curproc == p) {
     do_exit(status);
@@ -198,6 +199,7 @@ void proc_kill(proc_t *p, int status) {
     kthread_t *iterator;
     list_iterate_begin(&p->p_threads, iterator, kthread_t, kt_plink) {
       kthread_cancel(iterator, (void *)status);
+      sched_broadcast_on(&iterator->kt_wchan);
     }
     list_iterate_end();
   }
@@ -210,13 +212,15 @@ void proc_kill(proc_t *p, int status) {
  * In Weenix, this is only called by sys_halt.
  */
 void proc_kill_all() {
-  // TODO: fix this function and update for VM
   list_link_t *link;
   list_t *idle_children = &proc_lookup(PID_IDLE)->p_children;
-  for (link = _proc_list.l_next; link != &_proc_list; link = link->l_next) {
-    proc_t *proc = list_item(link, proc_t, p_list_link);
-    // Skip current process
-    if (proc->p_pid == curproc->p_pid)
+  proc_t *proc;
+  list_iterate_begin(&_proc_list, proc, proc_t, p_list_link) {
+    KASSERT(proc->p_state == PROC_RUNNING || proc->p_state == PROC_DEAD);
+    // Skip current process, idle, and init
+    if (proc->p_pid == curproc->p_pid || 
+        proc->p_pid == PID_IDLE ||
+        proc->p_pid == PID_INIT)
       continue;
     int pid = proc->p_pid;
     int is_idle_child = 0;
@@ -233,6 +237,8 @@ void proc_kill_all() {
       proc_kill(proc, 0);
     }
   }
+  list_iterate_end();
+  do_exit(0);
 }
 
 proc_t *proc_lookup(int pid) {
@@ -257,6 +263,7 @@ list_t *proc_list() { return &_proc_list; }
  * necessarily mean that the process should be exited.
  */
 void proc_thread_exited(void *retval) {
+  dbg(DBG_PROC, "pid %d\n", curproc->p_pid);
   proc_cleanup((int)retval);
   curthr->kt_state = KT_EXITED;
   curproc->p_state = PROC_DEAD;
@@ -282,6 +289,8 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
   dbg(DBG_PROC, "pid: %d\n", pid);
   KASSERT(!options);
   KASSERT(pid >= -1);
+
+  dbginfo(DBG_VMMAP, proc_list_info, NULL);
   // Error if no children
   if (list_empty(&curproc->p_children))
     return -ECHILD;

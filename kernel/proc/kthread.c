@@ -68,6 +68,7 @@ static void free_stack(char *stack) {
 kthread_t *kthread_create(struct proc *p, kthread_func_t func, long arg1,
                           void *arg2) {
   kthread_t *new_kt = slab_obj_alloc(kthread_allocator);
+  KASSERT(new_kt);
   new_kt->kt_kstack = alloc_stack();
   KASSERT(new_kt->kt_kstack);
   context_setup(&new_kt->kt_ctx, func, arg1, arg2, new_kt->kt_kstack,
@@ -108,6 +109,7 @@ void kthread_destroy(kthread_t *t) {
  * If the thread's sleep is not cancellable, we do nothing else here.
  */
 void kthread_cancel(kthread_t *kthr, void *retval) {
+  dbg(DBG_PROC, "0x%p\n", kthr);
   if (kthr == curthr)
     kthread_exit(retval);
   else {
@@ -139,9 +141,9 @@ void kthread_exit(void *retval) {
   dbg(DBG_PROC, "pid %d wants to exit\n", curproc->p_pid);
   KASSERT(!curthr->kt_wchan);
   KASSERT(!list_link_is_linked(&curthr->kt_qlink));
+  KASSERT(curthr);
   curthr->kt_retval = retval;
   proc_thread_exited(retval);
-  KASSERT(curthr->kt_state == KT_EXITED);
 }
 
 /*
