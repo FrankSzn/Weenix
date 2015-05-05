@@ -742,7 +742,7 @@ static int s5fs_fillpage(vnode_t *vnode, off_t offset, void *pagebuf) {
  */
 static int s5fs_dirtypage(vnode_t *vnode, off_t offset) {
   dbg(DBG_S5FS, "vno %d offset: %d\n", vnode->vn_vno, offset);
-  KASSERT(curthr == vnode->vn_mutex.km_holder);
+  //KASSERT(curthr == vnode->vn_mutex.km_holder);
   // Verify this is a sparse region
   int status = s5_seek_to_block(vnode, offset, 0);
   if (status >= 0) { 

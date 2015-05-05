@@ -9,8 +9,6 @@
 #include "util/init.h"
 #include "util/debug.h"
 
-#include "mm/tlb.h"
-
 static ktqueue_t kt_runq;
 
 static __attribute__((unused)) void sched_init(void) {
@@ -212,7 +210,6 @@ void sched_switch(void) {
   // Reenable interupts
   KASSERT(curthr->kt_state == KT_RUN);
   context_switch(&old->kt_ctx, &curthr->kt_ctx);
-  tlb_flush_all();
   intr_setipl(old_ipl);
   intr_enable();
 }
