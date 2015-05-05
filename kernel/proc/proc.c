@@ -199,7 +199,6 @@ void proc_kill(proc_t *p, int status) {
     kthread_t *iterator;
     list_iterate_begin(&p->p_threads, iterator, kthread_t, kt_plink) {
       kthread_cancel(iterator, (void *)status);
-      sched_broadcast_on(&iterator->kt_wchan);
     }
     list_iterate_end();
   }
