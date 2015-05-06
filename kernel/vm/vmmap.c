@@ -170,7 +170,6 @@ vmmap_t *vmmap_clone(vmmap_t *map) {
     KASSERT(new_vma);
     memcpy(new_vma, vma, sizeof(vmarea_t));
     new_vma->vma_vmmap = new_map;
-    vma->vma_obj->mmo_ops->ref(vma->vma_obj); // Incr. refcount
     list_insert_tail(&new_map->vmm_list, &new_vma->vma_plink);
   } list_iterate_end();
   return new_map;

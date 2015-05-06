@@ -50,6 +50,10 @@ int do_read(int fd, void *buf, size_t nbytes) {
     return -EISDIR;
   }
   int out = f->f_vnode->vn_ops->read(f->f_vnode, f->f_pos, buf, nbytes);
+  if (out < 0) {
+    fput(f);
+    return out;
+  }
   f->f_pos += out;
   fput(f);
   return out;

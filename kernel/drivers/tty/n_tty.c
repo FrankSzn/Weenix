@@ -120,8 +120,9 @@ int n_tty_read(tty_ldisc_t *ldisc, void *buf, int len) {
   // Wait for some data
   while (nt->rhead == nt->ckdtail) {
     kmutex_unlock(&nt->rlock);
-    // TODO: check sleep behavior
-    sched_cancellable_sleep_on(&nt->rwaitq);
+
+    if (-EINTR == sched_cancellable_sleep_on(&nt->rwaitq))
+      return -EINTR;  
     kmutex_lock(&nt->rlock);
   }
 

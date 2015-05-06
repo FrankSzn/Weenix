@@ -222,15 +222,15 @@ find:
  */
 void vput(struct vnode *vn) {
   KASSERT(vn);
+  
+  dbg(DBG_VNREF, "vput: 0x%p, 0x%p vno %ld, down to %d, nrespages = %d\n", vn,
+      vn->vn_mmobj, (long)vn->vn_vno, vn->vn_refcount - 1, vn->vn_nrespages);
 
   KASSERT(vn->vn_refcount);
   KASSERT(0 <= vn->vn_nrespages);
   KASSERT(vn->vn_nrespages < vn->vn_refcount);
 
   KASSERT(!(VN_BUSY & vn->vn_flags));
-
-  dbg(DBG_VNREF, "vput: 0x%p, 0x%p vno %ld, down to %d, nrespages = %d\n", vn,
-      vn->vn_fs, (long)vn->vn_vno, vn->vn_refcount - 1, vn->vn_nrespages);
 
   if ((vn->vn_nrespages == (vn->vn_refcount - 1)) &&
       !vn->vn_fs->fs_op->query_vnode(vn)) {

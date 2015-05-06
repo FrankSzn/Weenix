@@ -153,10 +153,14 @@ void kthread_exit(void *retval) {
 kthread_t *kthread_clone(kthread_t *thr) {
   dbg(DBG_VM, "pid: %d\n", thr->kt_proc->p_pid);
   kthread_t *new_kt = slab_obj_alloc(kthread_allocator);
-  KASSERT(new_kt);
+  if (!new_kt)
+    return NULL;
   memcpy(new_kt, thr, sizeof(kthread_t));
   new_kt->kt_kstack = alloc_stack();
-  KASSERT(new_kt->kt_kstack);
+  if (!new_kt->kt_state) {
+    slab_obj_free(kthread_allocator, new_kt);
+    return NULL;
+  }
   list_link_init(&new_kt->kt_qlink);
   list_link_init(&new_kt->kt_plink);
   new_kt->kt_state = KT_NO_STATE;

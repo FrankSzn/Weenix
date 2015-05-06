@@ -93,8 +93,6 @@ void sched_sleep_on(ktqueue_t *q) {
   sched_switch();
   dbg(DBG_PROC, "thread %d woke up\n", curproc->p_pid);
   KASSERT(!curthr->kt_wchan);
-  if (curthr->kt_cancelled)
-    kthread_exit(ECANCELED);
 }
 
 /*
@@ -114,7 +112,7 @@ int sched_cancellable_sleep_on(ktqueue_t *q) {
   dbg(DBG_PROC, "thread %d woke up\n", curproc->p_pid);
   KASSERT(!curthr->kt_wchan);
   if (curthr->kt_cancelled)
-    kthread_exit(ECANCELED);
+    return -EINTR;
   return 0;
 }
 
