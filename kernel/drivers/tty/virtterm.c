@@ -193,7 +193,8 @@ int vt_switch(int term) {
 void vt_print_shutdown() {
   tty_driver_t *ttyd;
   static const char str[] = "                   "
-                            "It is now safe to turn off your computer";
+                            "It is now safe to turn off your weenix\n\n"
+                            "                                      \\o/\n";
   int i;
 
   if (vt_curterm == NULL)

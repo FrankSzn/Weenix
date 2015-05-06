@@ -126,7 +126,8 @@ static int shadow_lookuppage(mmobj_t *o, uint32_t pagenum, int forwrite,
     return pframe_get(o, pagenum, pf);
   } else { // First shadow object with given page resident
     while (o) {
-      dbg(DBG_VM, "o: 0x%p\n", o);
+      dbg(DBG_VM, "o: 0x%p count: %d pages: %d\n", o,
+          o->mmo_refcount, o->mmo_nrespages);
       if (o->mmo_shadowed) { // Shadow object
         *pf = pframe_get_resident(o, pagenum);
         if (*pf) { // Already resident

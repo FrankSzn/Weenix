@@ -50,32 +50,53 @@ static uint32_t fork_setup_stack(const regs_t *regs, void *kstack) {
  */
 int do_fork(struct regs *regs) {
   dbg(DBG_FORK, "\n");
-  // Set up new proc
+  // Set up new proc and thread
   proc_t *new_proc = proc_create("");
   KASSERT(new_proc);
   memcpy(new_proc->p_comm, curproc->p_comm, PROC_NAME_LEN);
   new_proc->p_status = curproc->p_status;
   new_proc->p_state = curproc->p_state;
-  new_proc->p_pagedir = pt_create_pagedir();
-  KASSERT(new_proc->p_pagedir);
   new_proc->p_brk = curproc->p_brk;
   new_proc->p_start_brk = curproc->p_start_brk;
   vput(new_proc->p_cwd);
   new_proc->p_cwd = curproc->p_cwd;
   new_proc->p_vmmap = vmmap_clone(curproc->p_vmmap);
-
-  // Increment refcounts
-  dbg(DBG_FORK, "\n");
-  memcpy(&new_proc->p_files, &curproc->p_files, sizeof(file_t*)*NFILES);
-  for (int i = 0; i < NFILES; ++i) {
-    if (new_proc->p_files[i]) fref(new_proc->p_files[i]);
+  kthread_t *new_thr = kthread_clone(curthr); 
+  if (!new_thr)
+    return -ENOMEM;
+  new_proc->p_pagedir = pt_create_pagedir();
+  if (!new_proc->p_pagedir) {
+    kthread_destroy(new_thr);
+    return -ENOMEM;
   }
-  vref(curproc->p_cwd);
-  KASSERT(curproc->p_vmmap != new_proc->p_vmmap);
+
+  // Collapse shadow chains where possible
+  vmarea_t *vma;
+  list_iterate_begin(&curproc->p_vmmap->vmm_list, vma, vmarea_t, vma_plink) {
+    for (mmobj_t *o = vma->vma_obj; o->mmo_shadowed; o = o->mmo_shadowed) {
+      mmobj_t *next = o->mmo_shadowed;
+      // Look for a shadow object with a single reference
+      dbg(DBG_FORK, "%d\n", next->mmo_refcount + 1 - next->mmo_nrespages);
+      if (next->mmo_shadowed && 
+          next->mmo_refcount + 1 == next->mmo_nrespages) {
+        KASSERT(0);
+        dbg(DBG_FORK, "collapsing 0x%p and 0x%p\n", o, next);
+        pframe_t *pf;
+        list_iterate_begin(&next->mmo_respages, pf, pframe_t, pf_olink) {
+          while (pframe_is_busy(pf)) // Wait until not busy
+            sched_cancellable_sleep_on(&(pf)->pf_waitq);
+          pframe_migrate(pf, o);
+        }
+        list_iterate_end();
+        o->mmo_shadowed = next->mmo_shadowed;
+        next->mmo_shadowed = NULL;
+        next->mmo_ops->put(next);
+      }
+    }
+  }
+  list_iterate_end();
 
   // Set up shadow objects for private objects
-  dbg(DBG_FORK, "\n");
-  vmarea_t *vma;
   vmarea_t *vma2;
   list_t *list = &curproc->p_vmmap->vmm_list;
   list_t *list2 = &new_proc->p_vmmap->vmm_list;
@@ -86,6 +107,7 @@ int do_fork(struct regs *regs) {
       link = link->l_next, link2 = link2->l_next) {
     vma = list_item(link, vmarea_t, vma_plink);
     vma2 = list_item(link2, vmarea_t, vma_plink);
+    vma->vma_obj->mmo_ops->ref(vma->vma_obj); // Incr. refcount
     if (vma->vma_flags & MAP_PRIVATE) { 
       // Set up shadow objects
       mmobj_t *shadow = shadow_create();
@@ -108,19 +130,22 @@ int do_fork(struct regs *regs) {
   //dbginfo(DBG_VMMAP, vmmap_mapping_info, new_proc->p_vmmap);
 
   // Unmap pages and flush caches
-  dbg(DBG_FORK, "\n");
   pt_unmap_range(curproc->p_pagedir, USER_MEM_LOW, USER_MEM_HIGH);
   tlb_flush_all();
 
+  // Increment refcounts
+  memcpy(&new_proc->p_files, &curproc->p_files, sizeof(file_t*)*NFILES);
+  for (int i = 0; i < NFILES; ++i) {
+    if (new_proc->p_files[i]) fref(new_proc->p_files[i]);
+  }
+  vref(curproc->p_cwd);
+
   // Set up new thread context
-  dbg(DBG_FORK, "\n");
-  kthread_t *new_thr = kthread_clone(curthr); 
-  KASSERT(new_thr);
   list_insert_tail(&new_proc->p_threads, &new_thr->kt_plink);
   new_thr->kt_proc = new_proc;
 
   new_thr->kt_ctx.c_eip = (uint32_t)&userland_entry;
-  regs->r_eax = 0; // TODO: check this
+  regs->r_eax = 0;
   new_thr->kt_ctx.c_esp = fork_setup_stack(regs, new_thr->kt_kstack);
   new_thr->kt_ctx.c_pdptr = new_proc->p_pagedir;
   new_thr->kt_ctx.c_kstack = (uintptr_t)new_thr->kt_kstack;
