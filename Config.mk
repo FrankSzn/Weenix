@@ -64,7 +64,7 @@
 # All debug statements
         #DBG = all,-mm,-term,-pagealloc,-disk,-vnref,-fref,-vmmap,-pframe
 # Change to this for no debug statements
-        DBG=-all
+        DBG = s5fs
 
 # terminal binary to use when opening a second terminal for gdb
         GDB_TERM=xterm

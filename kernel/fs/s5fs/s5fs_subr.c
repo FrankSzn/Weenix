@@ -63,7 +63,7 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
   KASSERT(inode);
   //KASSERT(curthr == vnode->vn_mutex.km_holder);
   blocknum_t block_index = S5_DATA_BLOCK(seekptr);
-  uint32_t blocknum;
+  int blocknum;
   int indirect = 0; // Bool, true if indirect block
   pframe_t *pframe;
   if (block_index < S5_NDIRECT_BLOCKS) { // Direct blocks
@@ -75,7 +75,10 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
       return -EFBIG;
     int allocated_indirect = 0;
     if (!inode->s5_indirect_block) { // Allocate indirect if we need to
-      inode->s5_indirect_block = s5_alloc_block(VNODE_TO_S5FS(vnode));
+      int status = s5_alloc_block(VNODE_TO_S5FS(vnode));
+      if (status < 0)
+        return -ENOSPC;
+      inode->s5_indirect_block = status;
       allocated_indirect = 1;
     }
     int status = pframe_get(S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode)), 
@@ -89,13 +92,14 @@ int s5_seek_to_block(vnode_t *vnode, off_t seekptr, int alloc) {
     blocknum = ((uint32_t *)pframe->pf_addr)[block_index];
   }
   if (!blocknum) { // Blocknum is zero, must be sparse
+    dbg(DBG_S5FS, "blocknum %d, alloc %d\n", blocknum, alloc);
     if (!alloc) { // Can't allocate a new block, return zero
       if (indirect) pframe_unpin(pframe);
       return 0;
     }
     // Allocate new block
     blocknum = s5_alloc_block(VNODE_TO_S5FS(vnode));
-    if (blocknum <= 0) {
+    if (blocknum < 0) {
       if (indirect) pframe_unpin(pframe);
       return blocknum;
     }
@@ -157,7 +161,11 @@ int s5_file_op(struct vnode *vnode, const off_t seek, char *buf, size_t len, int
     // TODO: zero out allocated sparse block
     if (write) {
       pframe_pin(pframe);
-      pframe_dirty(pframe);
+      int status = pframe_dirty(pframe);
+      if (status) {
+        pframe_unpin(pframe);
+        return ndone_total;
+      }
       memcpy(pframe->pf_addr + offset, buf + ndone_total, ndone);
       pframe_unpin(pframe);
     } else {
@@ -257,6 +265,7 @@ static int s5_alloc_block(s5fs_t *fs) {
   dbg(DBG_S5FS, "\n");
   lock_s5(fs);
   s5_super_t *super = fs->s5f_super;
+  dbg(DBG_S5FS, "%d blocks free\n", super->s5s_nfree);
   s5_dirty_super(fs); // Dirty super
   if (super->s5s_nfree) { // Use next entry in super block
     --super->s5s_nfree;

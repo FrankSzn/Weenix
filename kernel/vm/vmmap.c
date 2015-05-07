@@ -377,8 +377,9 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
     vma = vmmap_lookup(map, pagenum);
     KASSERT(vma);
     pframe_t *pframe;
-    pframe_lookup(vma->vma_obj, pagenum - vma->vma_start + vma->vma_off, 
+    int status = pframe_lookup(vma->vma_obj, pagenum - vma->vma_start + vma->vma_off, 
         write, &pframe);
+    if (status) return status;
     KASSERT(pframe && pframe->pf_addr);
 
     size_t offset = PAGE_OFFSET((char *)vaddr + ndone_total);
@@ -386,7 +387,8 @@ int vmmap_iop(vmmap_t *map, const void *vaddr, void *buf, size_t count, int writ
 
     // Do the operation on this page
     if (write) {
-      pframe_dirty(pframe);
+      int status = pframe_dirty(pframe);
+      if (status) return status;
       memcpy((char *)pframe->pf_addr + offset, (char *)buf + ndone_total, ndone);
     } else {
       memcpy((char *)buf + ndone_total, (char *)pframe->pf_addr + offset, ndone);

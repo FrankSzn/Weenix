@@ -84,7 +84,11 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   int flags = PD_PRESENT | PD_USER;
   if (forwrite) {
     flags |= PD_WRITE;
-    pframe_dirty(pf);
+    int status = pframe_dirty(pf);
+    if (status) {
+      proc_kill(curproc, ENOSPC);
+      return;
+    }
   }
   uintptr_t phys_addr = pt_virt_to_phys((uintptr_t)pf->pf_addr);
   dbg(DBG_VM, "virtual 0x%p kernel 0x%p physical 0x%p\n",
