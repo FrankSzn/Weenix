@@ -76,10 +76,8 @@ int do_fork(struct regs *regs) {
     for (mmobj_t *o = vma->vma_obj; o->mmo_shadowed; o = o->mmo_shadowed) {
       mmobj_t *next = o->mmo_shadowed;
       // Look for a shadow object with a single reference
-      dbg(DBG_FORK, "%d\n", next->mmo_refcount + 1 - next->mmo_nrespages);
       if (next->mmo_shadowed && 
-          next->mmo_refcount + 1 == next->mmo_nrespages) {
-        KASSERT(0);
+          next->mmo_refcount == next->mmo_nrespages + 1) {
         dbg(DBG_FORK, "collapsing 0x%p and 0x%p\n", o, next);
         pframe_t *pf;
         list_iterate_begin(&next->mmo_respages, pf, pframe_t, pf_olink) {
@@ -89,7 +87,7 @@ int do_fork(struct regs *regs) {
         }
         list_iterate_end();
         o->mmo_shadowed = next->mmo_shadowed;
-        next->mmo_shadowed = NULL;
+        o->mmo_shadowed->mmo_ops->ref(o->mmo_shadowed);
         next->mmo_ops->put(next);
       }
     }

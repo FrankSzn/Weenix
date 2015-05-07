@@ -61,7 +61,8 @@ mmobj_t *anon_create() {
  * Increment the reference count on the object.
  */
 static void anon_ref(mmobj_t *o) { 
-  dbg(DBG_ANON, "up to %d\n", ++o->mmo_refcount);
+  dbg(DBG_ANON, "up to %d\n", o->mmo_refcount + 1);
+  ++o->mmo_refcount;
 }
 
 /*

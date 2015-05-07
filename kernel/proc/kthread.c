@@ -157,7 +157,7 @@ kthread_t *kthread_clone(kthread_t *thr) {
     return NULL;
   memcpy(new_kt, thr, sizeof(kthread_t));
   new_kt->kt_kstack = alloc_stack();
-  if (!new_kt->kt_state) {
+  if (!new_kt->kt_kstack) {
     slab_obj_free(kthread_allocator, new_kt);
     return NULL;
   }
