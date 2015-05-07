@@ -62,7 +62,6 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
     return;
   }
   // Check permissions
-  // TODO: check NONE flag
   if (((cause & FAULT_WRITE) && !(PROT_WRITE & vma->vma_prot)) ||
       ((cause & FAULT_EXEC) && !(PROT_EXEC & vma->vma_prot)) ||
       (!(PROT_READ & vma->vma_prot)) ||
@@ -83,8 +82,10 @@ void handle_pagefault(uintptr_t vaddr, uint32_t cause) {
   status = pframe_lookup(vma->vma_obj, 
       pn - vma->vma_start + vma->vma_off, forwrite, &pf);
   int flags = PD_PRESENT | PD_USER;
-  if (forwrite) flags |= PD_WRITE;
-  if (cause & FAULT_WRITE) pframe_dirty(pf);
+  if (forwrite) {
+    flags |= PD_WRITE;
+    pframe_dirty(pf);
+  }
   uintptr_t phys_addr = pt_virt_to_phys((uintptr_t)pf->pf_addr);
   dbg(DBG_VM, "virtual 0x%p kernel 0x%p physical 0x%p\n",
       (void *)vaddr, (void *)pf->pf_addr, (void *)phys_addr);

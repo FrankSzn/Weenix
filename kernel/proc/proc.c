@@ -82,6 +82,7 @@ proc_t *proc_create(char *name) {
   dbg(DBG_INIT, "creating proc %s\n", name);
   // Allocate new proc
   proc_t *new_proc = slab_obj_alloc(proc_allocator);
+  if (!new_proc) return NULL;
   // Set PID
   new_proc->p_pid = _proc_getid();
   dbg(DBG_INIT, "got pid %d\n", new_proc->p_pid);
@@ -109,6 +110,10 @@ proc_t *proc_create(char *name) {
     list_insert_tail(&curproc->p_children, &new_proc->p_child_link);
 
   new_proc->p_pagedir = pt_create_pagedir();
+  if (!new_proc->p_pagedir) {
+    slab_obj_free(proc_allocator, new_proc);
+    return NULL;
+  }
 
   for (int i = 0; i < NFILES; ++i)
     new_proc->p_files[i] = NULL; // open files
@@ -118,7 +123,6 @@ proc_t *proc_create(char *name) {
     dbg(DBG_VFS, "proc %s unable to vref\n", name);
   new_proc->p_cwd = vfs_root_vn; // current working dir 
 
-  // Fields unset:
   new_proc->p_vmmap = vmmap_create();
 
   dbg(DBG_INIT, "returning proc %s\n", name);
@@ -163,11 +167,10 @@ void proc_cleanup(int status) {
     list_iterate_begin(&curproc->p_children, child, proc_t, p_child_link) {
       list_remove(&child->p_child_link);
       list_insert_tail(&proc_initproc->p_children, &child->p_child_link);
+      child->p_pproc = proc_lookup(PID_INIT);
     }
     list_iterate_end();
   }
-
-  list_remove(&curproc->p_list_link);
 
   // Wake parent
   sched_broadcast_on(&curproc->p_pproc->p_wait);
@@ -302,6 +305,7 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
       if (pid == -1 || (pid > 0 && child->p_pid == pid)) {
         found = 1;
         if (child->p_state == PROC_DEAD) {
+          dbg(DBG_PROC, "reaping proc %d\n", child->p_pid);
           KASSERT(!list_empty(&child->p_threads));
           kthread_t *thread =
               list_item(child->p_threads.l_next, kthread_t, kt_plink);
@@ -309,6 +313,7 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
           if (status)
             *status = child->p_status;
           list_remove(&child->p_child_link);
+          list_remove(&child->p_list_link);
           pid_t pid = child->p_pid;
           kthread_destroy(thread);
           pt_destroy_pagedir(child->p_pagedir);

@@ -52,7 +52,7 @@ int do_fork(struct regs *regs) {
   dbg(DBG_FORK, "\n");
   // Set up new proc and thread
   proc_t *new_proc = proc_create("");
-  KASSERT(new_proc);
+  if (!new_proc) return -ENOMEM;
   memcpy(new_proc->p_comm, curproc->p_comm, PROC_NAME_LEN);
   new_proc->p_status = curproc->p_status;
   new_proc->p_state = curproc->p_state;
@@ -60,13 +60,11 @@ int do_fork(struct regs *regs) {
   new_proc->p_start_brk = curproc->p_start_brk;
   vput(new_proc->p_cwd);
   new_proc->p_cwd = curproc->p_cwd;
+  vmmap_destroy(new_proc->p_vmmap);
   new_proc->p_vmmap = vmmap_clone(curproc->p_vmmap);
   kthread_t *new_thr = kthread_clone(curthr); 
-  if (!new_thr)
-    return -ENOMEM;
-  new_proc->p_pagedir = pt_create_pagedir();
-  if (!new_proc->p_pagedir) {
-    kthread_destroy(new_thr);
+  if (!new_thr) {
+    // Leak here, should free proc
     return -ENOMEM;
   }
 
