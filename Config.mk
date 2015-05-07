@@ -62,9 +62,9 @@
 # Debug message behavior. Note that this can be changed at runtime by
 # modifying the dbg_modes global variable.
 # All debug statements
-        DBG = all,-mm,-term,-pagealloc,-disk,-vnref,-fref,-pframe,-vmmap
+        #DBG = all,-mm,-term,-pagealloc,-disk,#-vnref,-fref,#-vmmap,-pframe
 # Change to this for no debug statements
-        #DBG=-all
+        DBG=-all
 
 # terminal binary to use when opening a second terminal for gdb
         GDB_TERM=xterm

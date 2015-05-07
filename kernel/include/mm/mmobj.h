@@ -108,5 +108,5 @@ static inline mmobj_t* mmobj_bottom_obj(mmobj_t *o) {
 }
 
 static inline list_t* mmobj_bottom_vmas(mmobj_t *o) {
-  return &(mmobj_bottom_obj(o))->mmo_un.mmo_vmas;
+  return &mmobj_bottom_obj(o)->mmo_un.mmo_vmas;
 }

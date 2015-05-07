@@ -234,6 +234,7 @@ void vput(struct vnode *vn) {
 
   if ((vn->vn_nrespages == (vn->vn_refcount - 1)) &&
       !vn->vn_fs->fs_op->query_vnode(vn)) {
+    dbg(DBG_VFS, "vnode unlinked, cleaning up\n");
     pframe_t *vp;
     /* vn is becoming passively-referenced, and the linkcount
      * is zero, so there is no way for it to become

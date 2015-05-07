@@ -262,7 +262,6 @@ static void s5fs_read_vnode(vnode_t *vnode) {
  */
 static void s5fs_delete_vnode(vnode_t *vnode) {
   dbg(DBG_S5FS, "vno %d\n", vnode->vn_vno);
-  kmutex_lock(&vnode->vn_mutex);
   // Get page frame
   pframe_t *pframe;
   mmobj_t *mmobj = S5FS_TO_VMOBJ(VNODE_TO_S5FS(vnode));
@@ -278,7 +277,6 @@ static void s5fs_delete_vnode(vnode_t *vnode) {
   if (!inode->s5_linkcount)
     s5_free_inode(vnode);
   dbg(DBG_S5FS, "vno %d, linkcount: %d\n", vnode->vn_vno, inode->s5_linkcount);
-  kmutex_unlock(&vnode->vn_mutex);
 }
 
 /*
@@ -293,7 +291,7 @@ static int s5fs_query_vnode(vnode_t *vnode) {
   // Get inode
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   KASSERT(inode->s5_linkcount >= 0);
-  return inode->s5_linkcount > 0;
+  return inode->s5_linkcount > 1;
 }
 
 /*

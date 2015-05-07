@@ -194,6 +194,7 @@ void proc_kill(proc_t *p, int status) {
   KASSERT(p->p_state == PROC_RUNNING || p->p_state == PROC_DEAD);
   // cancel all threads
   if (curproc == p) {
+    dbg(DBG_PROC, "current process exiting\n");
     do_exit(status);
   } else {
     kthread_t *iterator;
@@ -319,7 +320,8 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
     list_iterate_end();
     if (!found)
       return -ECHILD;
-    sched_cancellable_sleep_on(&curproc->p_wait);
+    if (-EINTR == sched_cancellable_sleep_on(&curproc->p_wait))
+      return -EINTR;
   }
 }
 

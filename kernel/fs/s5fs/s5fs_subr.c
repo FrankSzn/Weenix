@@ -395,7 +395,7 @@ int s5_alloc_inode(fs_t *fs, uint16_t type, devid_t devid) {
  * You probably want to use s5_free_block().
  */
 void s5_free_inode(vnode_t *vnode) {
-  KASSERT(curthr == vnode->vn_mutex.km_holder);
+  //KASSERT(curthr == vnode->vn_mutex.km_holder);
   uint32_t i;
   s5_inode_t *inode = VNODE_TO_S5INODE(vnode);
   s5fs_t *fs = VNODE_TO_S5FS(vnode);
@@ -513,6 +513,7 @@ int s5_remove_dirent(vnode_t *vnode, const char *name, size_t namelen) {
       vnode_t *vn = vget(vnode->vn_fs, dirent.s5d_inode);
       s5_dirty_inode(VNODE_TO_S5FS(vn), VNODE_TO_S5INODE(vn));
       --VNODE_TO_S5INODE(vn)->s5_linkcount;
+      dbg(DBG_S5FS, "new link count: %d\n", VNODE_TO_S5INODE(vn)->s5_linkcount);
       vput(vn);
     }
     fpos += nread;

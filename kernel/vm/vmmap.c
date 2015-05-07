@@ -68,7 +68,8 @@ void vmmap_destroy(vmmap_t *map) {
   KASSERT(map);
   vmarea_t *vma;
   list_iterate_begin(&map->vmm_list, vma, vmarea_t, vma_plink) {
-    dbg(DBG_VMMAP, "obj 0x%p shadowing 0x%p\n", vma->vma_obj, vma->vma_obj->mmo_shadowed);
+    dbg(DBG_VMMAP, "area 0x%p obj 0x%p shadowing 0x%p\n", 
+        vma, vma->vma_obj, vma->vma_obj->mmo_shadowed);
     KASSERT(list_link_is_linked(&vma->vma_olink));
     dbg(DBG_VMMAP, "putting bottom vno %d\n", 
         mmobj_to_vnode(mmobj_bottom_obj(vma->vma_obj))->vn_vno);
