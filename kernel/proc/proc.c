@@ -320,8 +320,7 @@ pid_t do_waitpid(pid_t pid, int options, int *status) {
     list_iterate_end();
     if (!found)
       return -ECHILD;
-    if (-EINTR == sched_cancellable_sleep_on(&curproc->p_wait))
-      return -EINTR;
+    sched_sleep_on(&curproc->p_wait);
   }
 }
 
