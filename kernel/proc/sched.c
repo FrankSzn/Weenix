@@ -198,8 +198,8 @@ void sched_switch(void) {
   intr_setipl(IPL_LOW);
   // Wait for interrupt if empty
   while (!(curthr = ktqueue_dequeue(&kt_runq))) {
-    intr_disable();
     intr_wait();
+    intr_disable();
   }
   // Switch procs
   curproc = curthr->kt_proc;

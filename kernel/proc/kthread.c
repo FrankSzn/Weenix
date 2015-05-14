@@ -113,13 +113,8 @@ void kthread_cancel(kthread_t *kthr, void *retval) {
   if (kthr == curthr)
     kthread_exit(retval);
   else {
-    if (kthr->kt_state == KT_SLEEP || kthr->kt_state == KT_SLEEP_CANCELLABLE) {
-      kthr->kt_retval = retval;
-      sched_cancel(kthr);
-    } else {
-      panic("thread has invalid state %d at 0x%p\n",
-          kthr->kt_state, kthr->kt_state);
-    }
+    kthr->kt_retval = retval;
+    sched_cancel(kthr);
   }
 }
 
